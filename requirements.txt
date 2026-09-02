@@ -1,0 +1,45 @@
+# ESG Lens — Python 3.11+
+# Versions are pinned floors verified against the Sept 2026 ecosystem.
+# DO NOT `pip install` yet — see docs/handoff_to_backend.md Phase 0.
+# Install order matters: install torch FIRST (CPU wheel) or pip will pull the CUDA build (~2.5 GB).
+#
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
+#   pip install -r requirements.txt
+
+# ---- API layer ----
+fastapi==0.118.0
+uvicorn[standard]==0.37.0
+pydantic==2.11.0
+pydantic-settings==2.10.0
+
+# ---- HTTP / collection ----
+httpx==0.28.1
+tenacity==9.1.2
+hishel==0.1.1              # HTTP caching transport for httpx
+yfinance==0.2.66
+beautifulsoup4==4.13.5     # EDGAR HTML filing sectioning
+lxml==5.4.0
+python-dateutil==2.9.0
+
+# ---- NLP ----
+torch==2.6.0               # install the CPU wheel first, see above
+transformers==4.57.0
+tokenizers==0.22.0
+spacy==3.8.7
+# python -m spacy download en_core_web_sm   (run after install; not a pip dep)
+
+# ---- Data / config ----
+pandas==2.3.0
+numpy==2.2.6
+PyYAML==6.0.2
+
+# ---- Observability ----
+structlog==25.4.0
+
+# ---- Dev / test (move to requirements-dev.txt if preferred) ----
+pytest==8.4.1
+pytest-asyncio==1.1.0
+pytest-cov==6.2.1
+respx==0.22.0              # httpx mocking for collector tests
+ruff==0.13.0
+mypy==1.18.1
