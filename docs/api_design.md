@@ -56,7 +56,7 @@ Queues an analysis. Returns immediately — **never blocks on NLP**.
 | `tickers` | `string[]` | ✅ | — | 1–25 items, deduped, uppercased |
 | `force_refresh` | `bool` | ✗ | `false` | Bypass the HTTP cache and re-collect |
 | `lookback_days` | `int` | ✗ | `365` | 30–730 |
-| `sources` | `string[]` | ✗ | all enabled | Subset of `gdelt`, `edgar`, `yfinance`, `newsapi` |
+| `sources` | `string[]` | ✗ | all enabled | Subset of `gdelt`, `edgar`, `yfinance`, `newsapi`. Must match the `raw_documents.source` CHECK exactly — adding a collector means updating both. |
 
 **`202 Accepted`**
 ```json
@@ -113,7 +113,7 @@ Poll for progress. Clients should poll every 2–5 s.
   "finished_at": "2026-09-02T14:04:02Z",
   "items": [
     {"ticker": "AAPL", "status": "done",   "n_documents": 47, "score": 62.4, "error": null},
-    {"ticker": "XOM",  "status": "done",   "n_documents": 51, "score": 20.8, "error": null},
+    {"ticker": "XOM",  "status": "done",   "n_documents": 51, "score": 20.7, "error": null},
     {"ticker": "JPM",  "status": "failed", "n_documents": 0,  "score": null,
      "error": "collector_error: all sources returned zero documents"}
   ],
@@ -129,7 +129,9 @@ Poll for progress. Clients should poll every 2–5 s.
 ```
 `status = partial` means some tickers succeeded and some failed — the client must handle it.
 `summary.portfolio_score` is an equal-weighted mean over `status="ok"` scores only; it is `null`
-if fewer than one ticker scored. **`404`** if the job id is unknown (jobs are retained 30 days).
+if fewer than one ticker scored. **`404`** if the job id is unknown. Jobs are retained **30 days**, enforced by the startup
+retention sweep in `architecture.md` §5.4; `esg_scores.job_id` is `ON DELETE SET NULL`, so
+purging a job never removes score history.
 
 ---
 
@@ -155,12 +157,12 @@ Returns the **latest stored** score. Read-only — it never triggers collection 
     "country": "US", "market_cap": 465000000000
   },
   "score": {
-    "composite": 20.8,
+    "composite": 20.7,
     "status": "ok",
-    "confidence": 0.14,
+    "confidence": 0.19,
     "sector_percentile": null,
     "pillars": {
-      "E": {"score": 20.8, "penalty": 3.7, "n_signals": 2, "status": "ok"},
+      "E": {"score": 20.7, "penalty": 3.72, "n_signals": 2, "status": "ok"},
       "S": {"score": null, "penalty": 0.0, "n_signals": 0, "status": "insufficient_data"},
       "G": {"score": null, "penalty": 0.0, "n_signals": 1, "status": "insufficient_data"}
     },
@@ -171,7 +173,7 @@ Returns the **latest stored** score. Read-only — it never triggers collection 
     "n_documents_collected": 3,
     "n_documents_esg_relevant": 3,
     "window": {"start": "2025-09-02", "end": "2026-09-02"},
-    "sources": {"gdelt": 2, "edgar": 1},
+    "sources": {"gdelt": 3},
     "top_contributors": [
       {
         "signal_id": 8814,
@@ -184,8 +186,9 @@ Returns the **latest stored** score. Read-only — it never triggers collection 
         "controversy_severity": 2,
         "controversy_terms": ["fine", "leak"],
         "polarity": -0.81,
+        "weight_evidence": 0.883,
         "weight": 0.265,
-        "contribution": -21.4
+        "contribution": -31.1
       }
     ]
   },
@@ -217,17 +220,17 @@ and `evidence` still returned so the caller can see *why*. This is a success, no
 |---|---|
 | `GET /api/v1/healthz` | `{"status":"ok","db":"ok","models_loaded":true,"version":"1.0.0"}`; `503` while models load |
 | `GET /api/v1/company/{ticker}/history?limit=30` | Score time series — free from the append-only table |
-| `GET /api/v1/company/{ticker}/documents?pillar=E&included=true&limit=50` | Paginated raw evidence |
+| `GET /api/v1/company/{ticker}/documents?pillar=E&included=true&limit=50` | Paginated raw evidence. **`pillar` and `included` are columns on `esg_signals`, not `raw_documents`** — the endpoint joins `raw_documents → esg_signals` and filters on the signal row whose `model_version` matches the one behind the ticker's latest `esg_scores` row. Documents with no signal row at that version are returned only when no filter is supplied. |
 | `GET /api/v1/methodology` | Serves the resolved weights + version — makes transparency machine-readable |
-| `DELETE /api/v1/portfolio/{job_id}` | Request cancellation; `202`, job moves to `cancelled` at the next checkpoint |
+| `DELETE /api/v1/portfolio/{job_id}` | **Deferred past v1.** Cancellation needs checkpoint semantics the job runner does not define (`architecture.md` §5.4 exposes only `enqueue`/`get`/`update`). The `cancelled` value stays in the `jobs.status` CHECK so adding it later needs no migration. Do not implement in Phase 4. |
 
 ---
 
 ## Client contract notes for the future dashboard
 1. **Always poll.** Analysis is async; there is no synchronous scoring endpoint by design.
 2. **Handle three score states:** `ok`, `insufficient_data`, `failed`. Never render `null` as `0`.
-3. **Render `confidence` next to every score.** A 20.8 at confidence 0.14 must not look like a
-   20.8 at confidence 0.9 — this is a product requirement, not a nicety.
+3. **Render `confidence` next to every score.** A 20.7 at confidence 0.19 must not look like a
+   20.7 at confidence 0.9 — this is a product requirement, not a nicety.
 4. **`sector_percentile` is the cross-company comparison field.** Raw composites are not
    comparable across sectors, because the pillar weights differ.
 5. Generate the TypeScript client from `/openapi.json` rather than hand-writing types.

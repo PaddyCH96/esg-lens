@@ -65,7 +65,9 @@ CREATE INDEX IF NOT EXISTS idx_aliases_alias ON company_aliases(alias);
 CREATE TABLE IF NOT EXISTS raw_documents (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     ticker         TEXT NOT NULL REFERENCES companies(ticker) ON DELETE CASCADE,
-    source         TEXT NOT NULL CHECK (source IN ('gdelt','edgar','yfinance','newsapi','rss')),
+    -- Keep in sync with the API `sources` enum in api_design.md §1. Add 'rss' only
+    -- alongside an actual RSS collector; research_notes.md §2.4 lists it as unevaluated.
+    source         TEXT NOT NULL CHECK (source IN ('gdelt','edgar','yfinance','newsapi')),
     doc_type       TEXT NOT NULL CHECK (doc_type IN ('news','filing_section','press_release')),
     external_id    TEXT,                               -- GDELT doc id / EDGAR accession no.
     url            TEXT,
@@ -118,7 +120,8 @@ CREATE TABLE IF NOT EXISTS esg_signals (
     weight_source   REAL,
     weight_recency  REAL,
     weight_category REAL,
-    weight_total    REAL,
+    weight_evidence REAL,                              -- w_ev = src*rec*conf; drives the sufficiency gate
+    weight_total    REAL,                              -- w    = w_ev * w_cat; drives the aggregation
 
     entities_json   TEXT,                              -- spaCy ORG entities found
     model_version   TEXT NOT NULL,                     -- 'finbert-esg-9cat@v1|prosus-finbert@v1|lex@2026-09'
@@ -149,7 +152,7 @@ CREATE TABLE IF NOT EXISTS esg_scores (
                         CHECK (status IN ('ok','insufficient_data','failed')),
     n_documents         INTEGER NOT NULL DEFAULT 0,
     n_signals           INTEGER NOT NULL DEFAULT 0,    -- documents that passed both gates
-    evidence_weight     REAL,                          -- Σ w(d)
+    evidence_weight     REAL,                          -- Σ w_ev(d), NOT Σ w(d) — see scoring_methodology.md §6.1
     window_start        TEXT,
     window_end          TEXT,
     methodology_version TEXT NOT NULL,                 -- config/scoring.yaml `version`
@@ -173,7 +176,11 @@ CREATE TABLE IF NOT EXISTS score_contributions (
     score_id      INTEGER NOT NULL REFERENCES esg_scores(id) ON DELETE CASCADE,
     signal_id     INTEGER NOT NULL REFERENCES esg_signals(id) ON DELETE CASCADE,
     pillar        TEXT NOT NULL CHECK (pillar IN ('E','S','G')),
-    contribution  REAL NOT NULL,                       -- signed points contributed
+    -- Signed points this ONE signal contributed to its pillar's base score:
+    --   contribution = 50 * (w * pol) / Sum(w over the pillar)
+    -- Contributions sum to (base_P - 50). The controversy penalty is NOT distributed
+    -- across contributions; it is reported separately on esg_scores.{e,s,g}_penalty.
+    contribution  REAL NOT NULL,
     rank          INTEGER,                             -- 1 = largest |contribution|
     UNIQUE (score_id, signal_id)
 );

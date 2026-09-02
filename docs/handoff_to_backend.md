@@ -77,15 +77,20 @@
 - **Pure functions only.** No DB, no network, no I/O inside `scoring/`.
 - `weights.py`, `aggregate.py`, `composite.py` implementing `scoring_methodology.md` §5–6.
 - Write `score_contributions` rows for the top-k signals by `|contribution|`.
+- **Two weights, not one.** `w_ev = w_src·w_rec·w_conf` gates sufficiency; `w = w_ev·w_cat`
+  drives aggregation. Persist both. Gating on `w` is wrong — see `scoring_methodology.md` §6.1.
 - **Definition of done:** a unit test reproduces the worked example in
-  `scoring_methodology.md` §8 to within 0.1 points. This test is the acceptance gate for the
-  whole methodology — write it before the implementation.
+  `scoring_methodology.md` §8 — `S_E = 20.7`, G and S `insufficient_data`, `composite = 20.7`,
+  `confidence = 0.19` — to within 0.1 points (0.01 for confidence). This test is the acceptance
+  gate for the whole methodology — write it before the implementation.
 
 ### Phase 4 — API + jobs
 - `jobs/runner.py` — the state machine from `architecture.md` §3, `asyncio.Semaphore(1)` around
   NLP, heartbeat updates, and a startup sweep failing jobs stale >1 h.
 - `api/main.py` — lifespan: run migrations, warm models, sweep stale jobs.
 - Routes exactly per `api_design.md`. RFC-7807 exception handlers. **No business logic in routes.**
+- Startup does two sweeps: fail jobs stale >1 h, and delete jobs older than `retention_days` (30).
+- **Do not implement `DELETE /portfolio/{job_id}`** — deferred past v1, see `api_design.md` §4.
 - **Definition of done:** `POST /portfolio/analyze` → poll → `GET /company/{ticker}/score`
   works end-to-end for `["AAPL","XOM"]`, and `/docs` renders the full schema.
 
@@ -125,6 +130,9 @@ weighting by position size · backtesting against returns.
 - **Skipping the EDGAR `User-Agent`.** SEC will block the IP.
 - **Treating FinBERT sentiment as ESG polarity.** See `research_notes.md` §3.2 — this
   invalidates the whole score if you get it wrong.
+- **Gating sufficiency on `w` instead of `w_ev`.** Category weight belongs in the aggregation,
+  not in the question of whether enough evidence exists. This was a real bug in an earlier draft
+  of the methodology.
 - **Averaging away controversies.** The separate penalty term in §6.1 exists precisely because
   a weighted mean lets PR volume bury one severe incident.
 - **Emitting 50 for no data.** `insufficient_data` is a required state, not an edge case.

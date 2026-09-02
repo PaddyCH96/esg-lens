@@ -175,6 +175,8 @@ Each implements `Collector.fetch(ticker, since) -> list[RawDocument]`. Rules:
   per-host token-bucket rate limiting (EDGAR 10/s, GDELT 1/s), `tenacity` retry with
   exponential backoff on 429/5xx, and a disk cache keyed on the request URL.
 - **Never raise out of a collector.** Return `[]` and log; one dead source must not fail a job.
+- The `raw_documents.source` CHECK and the API `sources` enum must stay in sync; adding a
+  collector means updating both (`data_model.md`, `api_design.md` §1).
 
 ### 5.2 NLP (`src/esg_lens/nlp`)
 - `registry.py` holds process-wide singletons. Models load **once** at app startup
@@ -196,7 +198,12 @@ Each implements `Collector.fetch(ticker, since) -> list[RawDocument]`. Rules:
 - **Concurrency:** one job at a time via a module-level `asyncio.Semaphore(1)` around NLP.
   Transformers on CPU do not benefit from parallel jobs and will thrash memory.
 - Interface is deliberately narrow (`enqueue`, `get`, `update`) so swapping in Celery/RQ
-  later touches one file.
+  later touches one file. **No `cancel` in v1** — cancellation needs checkpoint semantics this
+  runner does not define, so `DELETE /portfolio/{job_id}` is deferred (`api_design.md` §4).
+- **Retention sweep**, at startup, alongside the stale-job sweep: delete `jobs` rows older than
+  `retention_days` (default 30), which cascades `job_items`. `esg_scores.job_id` is
+  `ON DELETE SET NULL`, so score history survives. This is the component that owns the 30-day
+  retention promise in `api_design.md` §2.
 
 ### 5.5 API (`src/esg_lens/api`)
 Thin. Validate → call repo/job store → serialise. **No business logic in route handlers.**
@@ -211,7 +218,7 @@ Thin. Validate → call repo/job store → serialise. **No business logic in rou
 | **Raw SQL + repositories** | Schema is small and stable; the DDL doubles as documentation. Avoids ORM-lazy-loading surprises. | SQLAlchemy ORM — worth it if the schema grows past ~10 tables. |
 | **FastAPI** | Async, pydantic validation for free, OpenAPI docs out of the box — the dashboard gets a typed client for nothing. | Flask — no async, no schema generation. |
 | **pydantic v2** | One model definition serves validation, serialisation, and API docs. | dataclasses + manual validation. |
-| **HF transformers pipelines** | Fastest path to FinBERT; handles tokenisation and batching. | ONNX Runtime — 2–4× faster on CPU; a documented Phase-3 optimisation, not v1. |
+| **HF transformers pipelines** | Fastest path to FinBERT; handles tokenisation and batching. | ONNX Runtime — 2–4× faster on CPU; a documented **post-v1** optimisation (not `handoff_to_backend.md` Phase 3, which is the v1 scoring engine). |
 | **pandas** | Aggregation, sector percentiles, the sensitivity script. | Pure Python — fine too; pandas is worth its weight for the analysis scripts. |
 | **BackgroundTasks** | Zero infrastructure. | Celery+Redis — a second process and a broker for a single-user tool. |
 | **httpx + tenacity** | Async-capable client, clean retry decorators. | requests — sync-only. |

@@ -139,7 +139,9 @@ All candidates are Hugging Face hosted, permissively licensed, and CPU-runnable.
 - **Value:** `commitment` + `specificity` together are a genuinely differentiating **greenwashing
   signal** for the E pillar: high commitment + low specificity + self-reported source = discount.
 - **Limits:** climate only — covers a slice of E, none of S or G. DistilRoBERTa base, so cheap.
-- **Decision: adopt for the E pillar and the greenwashing modifier. Phase 2, not v1 critical path.**
+- **Decision: adopt for the E pillar and the greenwashing modifier — but post-v1.**
+  (Not a `handoff_to_backend.md` phase number: that scheme is Phase 0–5, all within v1.
+  This means a later milestone, after v1 ships.)
 
 ### 3.4 `facebook/bart-large-mnli` (zero-shot)
 - **Value:** no training data needed; arbitrary label sets; excellent for prototyping and for the
@@ -170,7 +172,7 @@ All candidates are Hugging Face hosted, permissively licensed, and CPU-runnable.
 | ESG relevance + 9-category | `yiyanghkust/finbert-esg-9-categories` | ✅ | ~40 ms/sentence |
 | Financial sentiment | `ProsusAI/finbert` | ✅ | ~40 ms/sentence |
 | Controversy detection | spaCy rules + YAML lexicon | ✅ | negligible |
-| Climate commitment/specificity | `climatebert/*` | Phase 2 | ~20 ms/sentence |
+| Climate commitment/specificity | `climatebert/*` | post-v1 | ~20 ms/sentence |
 | Zero-shot fallback | `bart-large-mnli` | Off by default | ~1–3 s/doc |
 
 Total v1 budget: **~10 s per company** for ~50 headlines on a laptop CPU. Acceptable for an
