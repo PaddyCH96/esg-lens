@@ -1,0 +1,30 @@
+{
+  "source_path": "/Users/paddykadamuthuri/projects/esg-lens/docs/architecture.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Architecture — ESG Lens",
+  "summary": "Technical architecture for ESG Lens: design constraints, component layout, data flow, directory structure, technology choices, and cross-cutting concerns.",
+  "scope": [
+    "FastAPI API layer",
+    "job runner (BackgroundTasks)",
+    "collectors (GDELT, EDGAR, yfinance, NewsAPI)",
+    "HTTP client caching/retry/rate limiting",
+    "NLP pipeline (spaCy, FinBERT classifier, sentiment, controversy lexicon)",
+    "scoring engine (weights, pillar aggregation, composite)",
+    "SQLite persistence and repositories",
+    "config YAML files",
+    "testing strategy",
+    "security and logging"
+  ],
+  "cross_refs": [
+    "docs/data_model.md",
+    "README.md",
+    "config/scoring.yaml",
+    "config/controversy_lexicon.yaml",
+    "config/sources.yaml"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Competing signals: contains a technology-choice table with rejected alternatives (ADR-like trade-off reasoning) but no ADR frontmatter, status, or single-decision structure; dominant content is implementation contracts, module responsibilities, and non-functional constraints, so SPEC chosen over ADR/DOC."
+}

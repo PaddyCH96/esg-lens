@@ -1,0 +1,32 @@
+{
+  "source_path": "/Users/paddykadamuthuri/projects/esg-lens/docs/scoring_methodology.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Scoring Methodology — ESG Lens",
+  "summary": "Defines the deterministic, versioned ESG scoring pipeline: gates, category/pillar weights, polarity, controversy penalties, aggregation, and confidence.",
+  "scope": [
+    "ESG scoring pipeline",
+    "config/scoring.yaml",
+    "config/controversy_lexicon.yaml",
+    "config/sources.yaml",
+    "FinBERT-ESG classifier",
+    "FinBERT sentiment",
+    "pillar sub-scores",
+    "composite score",
+    "sector percentile",
+    "confidence score",
+    "scripts/sensitivity.py"
+  ],
+  "cross_refs": [
+    "config/scoring.yaml",
+    "config/controversy_lexicon.yaml",
+    "config/sources.yaml",
+    "README",
+    "research notes §3.2",
+    "scripts/sensitivity.py"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

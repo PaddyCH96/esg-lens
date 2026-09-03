@@ -1,0 +1,31 @@
+{
+  "source_path": "/Users/paddykadamuthuri/projects/esg-lens/docs/data_model.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Data Model — ESG Lens",
+  "summary": "Authoritative SQLite schema (DDL), entity relationships, and design rationale for ESG Lens companies, documents, signals, scores, and jobs tables.",
+  "scope": [
+    "SQLite database schema",
+    "companies",
+    "company_aliases",
+    "raw_documents",
+    "esg_signals",
+    "esg_scores",
+    "score_contributions",
+    "jobs",
+    "job_items",
+    "collection_runs",
+    "schema_migrations",
+    "v_latest_scores view",
+    "src/esg_lens/db/schema.sql"
+  ],
+  "cross_refs": [
+    "research_notes.md",
+    "config/scoring.yaml",
+    "src/esg_lens/db/schema.sql"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

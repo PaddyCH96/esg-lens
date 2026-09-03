@@ -1,0 +1,30 @@
+{
+  "source_path": "/Users/paddykadamuthuri/projects/esg-lens/docs/api_design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "API Design — ESG Lens",
+  "summary": "REST API contract for ESG Lens v1: async portfolio analysis jobs, company score retrieval, error envelopes, and supporting endpoints.",
+  "scope": [
+    "REST API v1",
+    "portfolio analyze endpoint",
+    "job polling endpoint",
+    "company score endpoint",
+    "company history and documents endpoints",
+    "healthz endpoint",
+    "methodology endpoint",
+    "RFC-7807 error envelope",
+    "HTTP status code contract",
+    "ticker validation",
+    "OpenAPI generation",
+    "dashboard client contract"
+  ],
+  "cross_refs": [
+    "/docs/scoring_methodology.md",
+    "/openapi.json",
+    "/docs"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

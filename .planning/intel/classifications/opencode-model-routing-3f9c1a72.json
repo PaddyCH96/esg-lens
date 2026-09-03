@@ -1,0 +1,19 @@
+{
+  "source_path": "/Users/paddykadamuthuri/projects/esg-lens/docs/opencode_model_routing.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "OpenCode Free-Model Routing Plan",
+  "summary": "Guide for building ESG Lens with OpenCode free model tiers: which model handles which task, config setup, handoff workflow, and quota management.",
+  "scope": ["OpenCode Zen", "model routing", "opencode.json config", "Ollama local models", "Gemini/Groq/Cerebras free API keys", "phase handoff workflow", "quota management", "review passes"],
+  "cross_refs": [
+    "docs/handoff_to_backend.md",
+    "docs/architecture.md",
+    "docs/scoring_methodology.md",
+    "docs/data_model.md",
+    "docs/api_design.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

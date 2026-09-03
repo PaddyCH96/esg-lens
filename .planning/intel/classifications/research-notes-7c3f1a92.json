@@ -1,0 +1,27 @@
+{
+  "source_path": "/Users/paddykadamuthuri/projects/esg-lens/docs/research_notes.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Research Notes — ESG Lens",
+  "summary": "Planning-phase research on ESG scoring approaches, free data sources (GDELT, SEC EDGAR, yfinance, NewsAPI), and open-source NLP model evaluation for the ESG Lens pipeline.",
+  "scope": [
+    "ESG scoring methodology",
+    "incumbent ESG ratings comparison",
+    "GDELT DOC 2.1 API",
+    "SEC EDGAR filings",
+    "yfinance metadata provider",
+    "NewsAPI free tier",
+    "finbert-esg-9-categories classifier",
+    "ProsusAI/finbert sentiment",
+    "ClimateBERT greenwashing signals",
+    "bart-large-mnli zero-shot fallback",
+    "spaCy NER and controversy lexicon",
+    "v1 model stack and CPU budget",
+    "public limitations disclosure"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "Prose- and table-heavy research survey, so DOC dominates. However it embeds several bolded 'Decision:' lines (adopt finbert-esg-9-categories, adopt en_core_web_sm, zero-shot off by default, v1 scores titles only) that read as pre-ADR decisions, and §2.5/§3.6 tables plus the ~10s-per-company budget resemble SPEC constraints. No ADR frontmatter, no Status/Context/Consequences structure, no numbered ADR filename, so not classified ADR. Synthesizer should consider promoting the embedded decisions to candidate ADRs and the §3.6 stack table to technical constraints. Many external quota claims are self-marked [VERIFY] and unverified. References §Architecture, an internal section pointer with no resolvable file path."
+}

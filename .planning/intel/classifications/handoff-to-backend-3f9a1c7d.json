@@ -1,0 +1,28 @@
+{
+  "source_path": "/Users/paddykadamuthuri/projects/esg-lens/docs/handoff_to_backend.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Handoff to Backend Developer (OpenCode)",
+  "summary": "Phased build order, ground rules, assumptions, out-of-scope list and implementation pitfalls for building the ESG Lens backend API.",
+  "scope": [
+    "build order",
+    "collectors (GDELT, EDGAR, yfinance, NewsAPI)",
+    "NLP pipeline (FinBERT, spaCy)",
+    "scoring engine",
+    "FastAPI API and job runner",
+    "SQLite schema and config files",
+    "validation and sensitivity analysis"
+  ],
+  "cross_refs": [
+    "architecture.md",
+    "data_model.md",
+    "docs/data_model.md",
+    "scoring_methodology.md",
+    "api_design.md",
+    "research_notes.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Prose/checklist handoff guide with sequencing, ground rules and definitions of done. Contains SPEC-like constraints (rate limits, model choices, config-over-constants) but defers all schemas/formulas/routes to architecture.md, data_model.md, scoring_methodology.md and api_design.md, so classified as DOC rather than SPEC. Sections 2 and 3 (assumptions, out-of-scope) carry PRD-like scope signal but no user stories or acceptance criteria."
+}
