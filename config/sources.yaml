@@ -1,0 +1,52 @@
+# Source credibility tiers (§5) - domain → tier → w_src
+# Tier 1 wire/major 1.00, Tier 2 reputable 0.80, Tier 3 unknown 0.50 (default), Tier 4 promotional 0.25, filing 0.70
+
+tiers:
+  1:
+    weight: 1.00
+    domains:
+      - reuters.com
+      - apnews.com
+      - bloomberg.com
+      - ft.com
+      - wsj.com
+      - nytimes.com
+      - washingtonpost.com
+      - bbc.com
+      - theguardian.com
+  2:
+    weight: 0.80
+    domains:
+      - cnbc.com
+      - marketwatch.com
+      - ft.com
+      - economist.com
+      - latimes.com
+      - usatoday.com
+      - independent.co.uk
+      - telegraph.co.uk
+  3:
+    weight: 0.50
+    domains: []  # default for anything not listed
+  4:
+    weight: 0.25
+    domains:
+      - prnewswire.com
+      - businesswire.com
+      - globenewswire.com
+      - prweb.com
+      - accesswire.com
+
+# Filing source (SEC EDGAR) - authoritative but self-reported
+filing:
+  weight: 0.70
+  source_value: edgar
+
+# Rate limits per host (§5.1, handoff Phase 1)
+rate_limits:
+  sec.gov: 10
+  api.gdeltproject.org: 1
+  gdelt: 1
+
+# Cache TTL in hours
+cache_ttl_hours: 24

@@ -1,0 +1,74 @@
+# Controversy lexicon (§4) - spaCy PhraseMatcher over lemmas
+# Severity 3 severe/systemic, 2 material, 1 minor/allegation, 0 none (implicit)
+# Negation guard demotes severity by 1: cleared of, dismissed, settled without, dropped
+
+version: "2026-09"
+
+# Negation phrases - if any appears within 4 tokens before a match, severity -1 (floor 0)
+negation_guard:
+  phrases:
+    - "cleared of"
+    - "dismissed"
+    - "settled without"
+    - "dropped"
+    - "acquitted of"
+    - "exonerated"
+  window: 4
+
+# Severity tiers - triggers are matched as lemma phrases (case-insensitive)
+tiers:
+  3:
+    label: "severe"
+    triggers:
+      - "oil spill"
+      - "bribery"
+      - "fraud"
+      - "child labor"
+      - "child labour"
+      - "fatality"
+      - "fatalities"
+      - "class action"
+      - "criminal probe"
+      - "criminal investigation"
+      - "corruption"
+      - "embezzlement"
+      - "forced labor"
+      - "forced labour"
+      - "human trafficking"
+      - "environmental disaster"
+  2:
+    label: "material"
+    triggers:
+      - "fine"
+      - "penalty"
+      - "penalties"
+      - "lawsuit"
+      - "recall"
+      - "strike"
+      - "investigation"
+      - "data breach"
+      - "layoff"
+      - "layoffs"
+      - "sanction"
+      - "violation"
+      - "non-compliance"
+      - "discrimination"
+      - "harassment"
+      - "pollution"
+      - "contamination"
+  1:
+    label: "minor"
+    triggers:
+      - "criticized"
+      - "criticised"
+      - "alleged"
+      - "allegation"
+      - "scrutiny"
+      - "protest"
+      - "complaint"
+      - "downgrade"
+      - "concern"
+      - "controversy"
+      - "backlash"
+      - "criticism"
+      - "accused"

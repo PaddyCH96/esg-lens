@@ -1,0 +1,75 @@
+# ESG Lens scoring configuration - versioned, hashed, stamped onto every esg_scores row
+# Source: docs/scoring_methodology.md §2, §3, §5, §6
+
+version: "0.1.0"
+
+# ── Gates & thresholds ──────────────────────────────────────────────────
+tau: 0.60                        # FinBERT-ESG relevance threshold (§5)
+min_evidence: 1.0               # Σ w_ev gate per pillar (§6.1)
+max_age_days: 730               # documents older than this are excluded (§5)
+pen_cap: 40                     # max controversy penalty per pillar (§6.1)
+
+# Controversy severity multipliers k[ctrl] (§6.1)
+k:
+  1: 1.0
+  2: 4.0
+  3: 12.0
+
+# Recency half-lives in days (§5)
+half_life:
+  news: 90
+  filing: 365
+  filing_section: 365
+  press_release: 90
+
+# ── Category → pillar map + within-pillar materiality (§2) ─────────────
+# w_cat sums to 1.0 per pillar. Non-ESG is not listed (dropped at gate 2).
+category_weights:
+  Climate Change: 0.45
+  Natural Capital: 0.25
+  Pollution & Waste: 0.30
+  Human Capital: 0.40
+  Product Liability: 0.35
+  Community Relations: 0.25
+  Corporate Governance: 0.45
+  Business Ethics & Values: 0.55
+
+category_to_pillar:
+  Climate Change: E
+  Natural Capital: E
+  Pollution & Waste: E
+  Human Capital: S
+  Product Liability: S
+  Community Relations: S
+  Corporate Governance: G
+  Business Ethics & Values: G
+
+# ── Pillar weights in composite, sector-overridable (§2) ───────────────
+pillar_weights:
+  default: {E: 0.34, S: 0.33, G: 0.33}
+  overrides:
+    Energy: {E: 0.50, S: 0.25, G: 0.25}
+    Utilities: {E: 0.45, S: 0.25, G: 0.30}
+    Financial Services: {E: 0.15, S: 0.25, G: 0.60}
+    Technology: {E: 0.25, S: 0.35, G: 0.40}
+    Healthcare: {E: 0.20, S: 0.45, G: 0.35}
+    Consumer Defensive: {E: 0.35, S: 0.40, G: 0.25}
+
+# ── Polarity damping (§3) ───────────────────────────────────────────────
+# Positive sentiment is scaled by 0.6 — a 40% damping — because favourable
+# coverage is frequently company-sourced PR. Controversy overrides sentiment.
+sentiment_damping: 0.6
+controversy_sentiment_weight: 0.3
+
+# ── Confidence formula weights (§6.3) ──────────────────────────────────
+confidence_weights:
+  doc_count: 0.4
+  evidence_weight: 0.3
+  pillar_coverage: 0.3
+confidence_doc_denominator: 30
+confidence_evidence_denominator: 10
+
+# ── Misc ────────────────────────────────────────────────────────────────
+scoring:
+  batch_size: 16                # HF pipeline batch size
+  model_version: "finbert-esg-9cat@v1|prosus-finbert@v1|lex@2026-09"
