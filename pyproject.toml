@@ -23,6 +23,8 @@ dependencies = [
     "spacy==3.7.5",
     "pandas==2.2.2",
     "python-dotenv==1.0.1",
+    "beautifulsoup4==4.15.0",
+    "lxml",
 ]
 
 [project.optional-dependencies]
