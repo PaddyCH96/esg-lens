@@ -1,0 +1,29 @@
+{
+  "articles": [
+    {
+      "title": "Apple faces lawsuit over pollution claims",
+      "url": "https://www.reuters.com/business/apple-lawsuit-pollution-20260903/",
+      "seendate": "20260903T091200Z",
+      "domain": "reuters.com",
+      "language": "English",
+      "sourcecountry": "United States",
+      "socialimage": "https://reuters.com/img.jpg"
+    },
+    {
+      "title": "Exxon reports oil spill investigation",
+      "url": "https://www.bloomberg.com/news/articles/exxon-oil-spill-20260902",
+      "seendate": "20260902T143000Z",
+      "domain": "bloomberg.com",
+      "language": "English",
+      "sourcecountry": "United States"
+    },
+    {
+      "title": "Tesla criticized for labor practices",
+      "url": "https://www.theguardian.com/business/tesla-labor-20260901",
+      "seendate": "20260901T080000Z",
+      "domain": "theguardian.com",
+      "language": "English",
+      "sourcecountry": "United Kingdom"
+    }
+  ]
+}

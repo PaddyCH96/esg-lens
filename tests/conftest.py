@@ -5,6 +5,14 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from hishel import AsyncSqliteStorage
+
+
+@pytest.fixture()
+def hishel_temp_storage(tmp_path):
+    """Temporary hishel AsyncSqliteStorage with 24h TTL for unit tests."""
+    storage = AsyncSqliteStorage(database_path=tmp_path / "http.sqlite", default_ttl=24 * 3600)
+    return storage
 
 
 @pytest.fixture()

@@ -1,0 +1,17 @@
+{
+  "shortName": "Apple Inc.",
+  "longName": "Apple Inc.",
+  "sector": "Technology",
+  "industry": "Consumer Electronics",
+  "country": "United States",
+  "currency": "USD",
+  "exchange": "NMS",
+  "marketCap": 3000000000000,
+  "cik": "0000320193",
+  "sustainability": {
+    "totalEsg": 25.0,
+    "environmentScore": 5.5,
+    "socialScore": 8.2,
+    "governanceScore": 11.3
+  }
+}
