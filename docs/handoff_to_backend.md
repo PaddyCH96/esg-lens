@@ -79,10 +79,19 @@
 - Write `score_contributions` rows for the top-k signals by `|contribution|`.
 - **Two weights, not one.** `w_ev = w_src·w_rec·w_conf` gates sufficiency; `w = w_ev·w_cat`
   drives aggregation. Persist both. Gating on `w` is wrong — see `scoring_methodology.md` §6.1.
-- **Definition of done:** a unit test reproduces the worked example in
-  `scoring_methodology.md` §8 — `S_E = 20.7`, G and S `insufficient_data`, `composite = 20.7`,
-  `confidence = 0.19` — to within 0.1 points (0.01 for confidence). This test is the acceptance
-  gate for the whole methodology — write it before the implementation.
+- **The acceptance test already exists: `tests/unit/test_scoring_fixture.py`.** It was written
+  before this phase, per the rule below. It currently SKIPS with a reason naming every function it
+  expects, and activates automatically the moment those functions become callable. Read its module
+  docstring first — it specifies the exact API contract (`weights.evidence_weight/scoring_weight/
+  recency_weight/polarity`, `aggregate.pillar_score/pillar_penalty`,
+  `composite.composite_score/confidence/contribution`).
+- **Do not change the expected numbers.** The function names are negotiable — if you implement a
+  different API, change the test deliberately and say so in the commit message. The numbers are the
+  specification. A reference implementation satisfying all 17 assertions fits in about 30 lines,
+  so if you find yourself fighting the test, the implementation is wrong, not the fixture.
+- **Definition of done:** `PYTHONPATH=src pytest tests/unit/test_scoring_fixture.py` reports
+  17 passed, 0 skipped — `S_E = 20.7`, G and S `insufficient_data`, `composite = 20.7`,
+  `confidence = 0.19`, Reuters `contribution = -31.1` — plus the full suite still green.
 
 ### Phase 4 — API + jobs
 - `jobs/runner.py` — the state machine from `architecture.md` §3, `asyncio.Semaphore(1)` around

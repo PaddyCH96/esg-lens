@@ -224,9 +224,20 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Scaffold | 0/2 | Not started | - |
-| 1. Collectors | 0/3 | Not started | - |
+| 0. Scaffold | 2/2 | ✅ Complete | 2026-09-03 (`d8902dc`) |
+| 1. Collectors | 3/3 | 🟡 Executed — UAT 1/7 | code 2026-09-03 (`854236c`) |
 | 2. NLP Pipeline | 0/3 | Not started | - |
-| 3. Scoring Engine | 0/3 | Not started | - |
+| 3. Scoring Engine | 0/3 | Not started (acceptance test written) | - |
 | 4. API & Jobs | 0/5 | Not started | - |
 | 5. Validation & Publication | 0/2 | Not started | - |
+
+**Overall: 5/18 plans (28%).** Verified against the codebase on 2026-09-05.
+
+Notes:
+- Phase 0 was executed outside the GSD plan flow, so there is no `.planning/phases/00-scaffold/`
+  directory and no PLAN/SUMMARY artifacts for it. The code and tests exist and pass.
+- Phase 1 is **code complete but not verified**. 6 of 7 UAT tests are pending in
+  `.planning/phases/01-collectors/01-UAT.md`. Do not mark the phase done until they close.
+- Phase 3's acceptance fixture (`tests/unit/test_scoring_fixture.py`) is written and skipping.
+  It activates automatically the moment `src/esg_lens/scoring/` becomes importable, which is the
+  intended TDD gate from `docs/handoff_to_backend.md` Phase 3.

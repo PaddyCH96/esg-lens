@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-09-03T13:20:05.622Z"
-last_activity: 2026-09-02 — Canonical PROJECT/REQUIREMENTS/ROADMAP/STATE generated from the
+status: execution
+stopped_at: Phase 1 executed (3/3 plans); UAT in progress 1/7
+last_updated: "2026-09-05T00:00:00.000Z"
+last_activity: 2026-09-05 — State reconciled with codebase; Phase 3 acceptance fixture written ahead of implementation
 progress:
   total_phases: 6
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 18
+  completed_plans: 5
+  percent: 28
 ---
 
 # Project State
@@ -22,17 +22,37 @@ See: .planning/PROJECT.md (updated 2026-09-02)
 
 **Core value:** Every score is fully auditable and reproducible — the exact documents, weights and
 formula behind any number are visible, and the system says `insufficient_data` rather than inventing one.
-**Current focus:** Phase 0 — Scaffold
+**Current focus:** Phase 1 — Collectors (UAT), then Phase 2 — NLP Pipeline
 
 ## Current Position
 
-Phase: 0 of 5 (Scaffold) — numbering follows docs/handoff_to_backend.md §1 (Phase 0–5)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-09-02 — Canonical PROJECT/REQUIREMENTS/ROADMAP/STATE generated from the
-7-document ingest, replacing the earlier hand-authored PROJECT.md and ROADMAP.md.
+Phase: 1 of 5 (Collectors) — numbering follows docs/handoff_to_backend.md §1 (Phase 0–5)
+Plan: 3 of 3 executed in current phase
+Status: Phase 1 code complete and committed; **UAT 1/7 passed, 6 pending** — see
+`.planning/phases/01-collectors/01-UAT.md`. Phase 1 is not verified until UAT closes.
+Last activity: 2026-09-05 — planning state reconciled against the codebase (it had drifted to 0%
+while Phases 0 and 1 were already built and pushed), and the Phase 3 acceptance fixture was
+written ahead of any scoring code.
 
-Progress: [░░░░░░░░░░] 0% (0/18 plans)
+Progress: [██░░░░░░░░] 28% (5/18 plans)
+
+### What actually exists on disk (verified 2026-09-05)
+
+- **Phase 0 — Scaffold: COMPLETE.** Commit `d8902dc`. `config.py` (168 LOC) with `ScoringConfig`
+  exposing `version`/`config_hash`, all three `config/*.yaml` populated, `db/schema.sql` (224 lines),
+  `db/engine.py`, `scripts/init_db.py`. No `.planning/phases/00-scaffold/` directory exists — Phase 0
+  was executed outside the GSD plan flow, so it has no PLAN/SUMMARY artifacts.
+- **Phase 1 — Collectors: EXECUTED, awaiting UAT.** Commits `34aed79`..`854236c`. `collectors/`
+  is 1,468 LOC: `http.py` (token bucket, tenacity 429/5xx, hishel 24h cache), `base.py`
+  (Collector ABC, `RawDocument`, `content_hash`), `gdelt.py`, `edgar.py` (CIK 7d cache, 10-K
+  Item 1/1A split), `yfinance_meta.py`, `newsapi.py` (flagged off). Plus `scripts/backfill.py`.
+- **Phase 2 — NLP: NOT STARTED.** `nlp/clean.py` (48) and `nlp/registry.py` (43) exist from the
+  pre-GSD boilerplate commit `778b961`, not from a Phase 2 plan. `classify.py`, `sentiment.py`,
+  `entity.py`, `controversy.py`, `pipeline.py` are all 0 bytes.
+- **Phases 3–5: NOT STARTED.** All files in `scoring/`, `api/`, `jobs/` are 0 bytes, except the
+  Phase 3 acceptance test at `tests/unit/test_scoring_fixture.py`, which is written and skipping
+  until `scoring/` exists.
+- **Test suite: 66 passing** (`python3 -m pytest -q`, ~11s), plus 5 skipping Phase 3 fixtures.
 
 ## Performance Metrics
 
@@ -74,8 +94,18 @@ contains no ADR-class documents. Most relevant to current and near work:
 
 ### Pending Todos
 
+- **Close Phase 1 UAT** — 6 of 7 tests pending in `01-collectors/01-UAT.md`. Phase 1 cannot be
+  marked verified until these pass. Tests 3 (never-raise), 4 (EDGAR User-Agent + rate limits) and
+  5 (yfinance sustainability isolation) guard the three highest-risk traps in the handoff doc.
 - Promote D-008 and D-009 to real ADRs (`/gsd:decide`) — recommended by INGEST-CONFLICTS.md I-001/I-012.
-- Confirm the `[VERIFY]`-marked external quota claims in research_notes.md §2 before Phase 1.
+  D-008 (the `w_ev`/`w` split) is now enforced by `tests/unit/test_scoring_fixture.py`, but a passing
+  test is not a locked decision — a later plan cannot be blocked against it until an ADR exists.
+- Reconcile `src/esg_lens/models.py` (0 bytes) with `architecture.md` §4, which specifies it as the
+  pydantic domain-model layer. Collectors use the `RawDocument` dataclass in `collectors/base.py`
+  instead. Either move it into `models.py` or delete the empty file and amend the doc.
+- Rewrite `db/repositories.py` (42 LOC, `**kwargs` dynamic SQL, only Company + Document repos)
+  with explicit columns before Phase 3 — it will not survive append-only score writes and
+  `score_contributions` ranking.
 
 ### Blockers/Concerns
 
