@@ -59,13 +59,19 @@ async def test_gdelt_fetch_normalizes_domain_seendate_content_hash(gdelt_sample,
 
 @respx.mock
 @pytest.mark.asyncio
-async def test_gdelt_chunked_queries_merge_and_dedup_on_content_hash(gdelt_sample, tmp_path):
-    """Chunked queries (exceeding 400 chars) merge and dedup on content_hash — 2 sequential calls."""
-    # Create a duplicate article set to test dedup
+async def test_gdelt_cross_pillar_queries_merge_and_dedup_on_content_hash(gdelt_sample, tmp_path):
+    """One query per pillar (E, S, G); results merge and dedup on content_hash.
+
+    Replaces the old chunked-query test. Phase 1 split ONE oversized term-bundle query into two
+    character-count chunks — a workaround for a 913-char query GDELT refused outright. Phase 1b
+    issues one short theme query per pillar instead, so the dedup that matters is now CROSS-PILLAR:
+    a single article can legitimately match E and G themes at once (an oil spill lawsuit, say) and
+    must be stored once.
+    """
     dup_sample = {
         "articles": [
             gdelt_sample["articles"][0],
-            gdelt_sample["articles"][0],  # duplicate title+url
+            gdelt_sample["articles"][0],  # duplicate within one response
             gdelt_sample["articles"][1],
         ]
     }
@@ -74,28 +80,39 @@ async def test_gdelt_chunked_queries_merge_and_dedup_on_content_hash(gdelt_sampl
     )
 
     col = GdeltCollector()
-    # Force chunking by monkeypatching _load_esg_terms to return many terms
-    from esg_lens.collectors import gdelt as gdelt_mod
+    docs = await col.fetch("AAPL", aliases=["Apple Inc"], force_refresh=True)
 
-    original_terms = gdelt_mod._load_esg_terms()
-    many_terms = [f"term{i} phrase extra long to exceed limit" for i in range(40)]
-    gdelt_mod._esg_terms_cache = many_terms
-    # Also need aliases that produce long query
-    long_aliases = ["Apple Inc", "Microsoft Corporation", "Exxon Mobil Corporation"]
-    try:
-        docs = await col.fetch("AAPL", aliases=long_aliases, force_refresh=True)
-        # Should have made 2 calls due to chunking
-        assert route.call_count == 2
-        # Dedup: duplicate article appears in both responses but should be deduped to unique hashes
-        hashes = [d.content_hash for d in docs]
-        assert len(hashes) == len(set(hashes))
-        # Each chunk returns 3 articles with 1 duplicate inside => 2 unique per chunk, 2 chunks => 2 unique overall after cross-chunk dedup
-        # So docs length should be 2, not 4 or 6
-        assert len(docs) == 2
-        # All docs have correct ticker upper
-        assert all(d.ticker == "AAPL" for d in docs)
-    finally:
-        gdelt_mod._esg_terms_cache = original_terms
+    # 3 pillar queries, each returning the same 3 articles (2 unique).
+    assert route.call_count == 3, "expected one query per pillar (E, S, G)"
+    hashes = [d.content_hash for d in docs]
+    assert len(hashes) == len(set(hashes)), "duplicate content_hash survived dedup"
+    assert len(docs) == 2, "same articles across all 3 pillar queries must collapse to 2 unique"
+    assert all(d.ticker == "AAPL" for d in docs)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_gdelt_queries_stay_within_length_budget():
+    """The defect that failed Phase 1: a 913-character query GDELT answered with
+    "Your query was too short or too long." Every generated query must stay under budget."""
+    import yaml
+    from pathlib import Path
+
+    from esg_lens.collectors.gdelt import build_theme_queries
+
+    cfg = yaml.safe_load(Path("config/gdelt_themes.yaml").read_text())
+    budget = cfg["max_query_chars"]
+
+    for ticker, aliases in (
+        ("AAPL", ["Apple", "Apple Inc", "Apple Inc."]),
+        ("XOM", ["ExxonMobil Holdings", "ExxonMobil Holdings Corporation"]),
+        ("BRK.B", ["Berkshire Hathaway Inc. Class B Common Stock"]),
+    ):
+        queries = build_theme_queries(aliases, ticker)
+        assert queries, f"no queries generated for {ticker}"
+        for pillar, q in queries:
+            assert len(q) <= budget, f"{ticker}/{pillar} query is {len(q)} chars, budget {budget}"
+            assert q.count("theme:") <= cfg["max_themes_per_query"]
 
 
 @respx.mock
@@ -109,9 +126,9 @@ async def test_gdelt_hishel_cache_path_not_bypassed_when_force_refresh_false(gde
     col = GdeltCollector()
     docs = await col.fetch("AAPL", aliases=["Apple Inc"], force_refresh=False)
     assert len(docs) == 3
-    # Broad bundle (D-01) + alias exceeds 400 chars → chunks into 2 sequential queries (D-03) when not cached;
-    # hishel may serve from disk cache on re-run, so call_count is 0 (cached) or 2 (miss) — both valid, but never 1
-    assert route.call_count in (0, 2)
+    # 01b-02: one theme query per pillar (E, S, G) — 3 requests, not the old 2 chunked ones.
+    # hishel may serve from disk cache on re-run, so 0 (fully cached) or 3 (miss) are both valid.
+    assert route.call_count in (0, 3)
     if route.call_count == 0:
         # hishel cache hit — no network call, which is correct for force_refresh=False when cached
         return

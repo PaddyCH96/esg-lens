@@ -81,7 +81,14 @@ async def test_safe_fetch_never_raises_and_writes_ok_row(db_conn):
     assert row is not None
     assert row["status"] == "ok"
     assert row["n_fetched"] == 1
-    assert row["n_new"] == 1
+    # N1: n_new is NULL until the caller reports what it actually inserted. It used to be written
+    # as len(docs) — a copy of n_fetched — which made collection_runs claim "12 new" on a re-run
+    # that inserted zero rows.
+    assert row["n_new"] is None, "n_new must not be a duplicate of n_fetched"
+    col.update_run_new_count(db_conn, 0)
+    assert db_conn.execute(
+        "SELECT n_new FROM collection_runs WHERE id = ?", (col.last_run_id,)
+    ).fetchone()["n_new"] == 0
     assert row["error"] is None
     assert row["job_id"] == "job1"
     assert row["duration_ms"] is not None

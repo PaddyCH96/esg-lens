@@ -18,7 +18,7 @@ import yaml
 
 from esg_lens.collectors.base import Collector, RawDocument, content_hash
 from esg_lens.collectors.http import get_http_client
-from esg_lens.config import CONFIG_DIR, settings
+from esg_lens.config import CONFIG_DIR, load_yaml, settings
 
 log = structlog.get_logger(__name__)
 
@@ -88,6 +88,63 @@ def _load_esg_terms() -> list[str]:
         terms = {"Climate Change", "oil spill", "bribery", "fraud", "fine"}
     _esg_terms_cache = sorted(terms)
     return _esg_terms_cache
+
+
+def primary_alias(aliases: list[str], ticker: str) -> str:
+    """Pick ONE alias for the search query.
+
+    Phase 1 OR-ed every alias into the query, which inflated it and bought nothing: GDELT matches
+    article text, and "Apple Inc" already retrieves the articles "Apple" would. Disambiguation is
+    the Phase 2 entity gate's job (spaCy NER against the full alias table), not the search query's.
+    Prefer the longest alias, which is the most specific and least ambiguous.
+    """
+    usable = [a.strip() for a in filtered_aliases(aliases) if a and a.strip()]
+    if not usable:
+        return ticker.upper()
+    return max(usable, key=len).strip('"')
+
+
+def build_theme_queries(
+    aliases: list[str],
+    ticker: str,
+    themes_config: dict | None = None,
+) -> list[tuple[str, str]]:
+    """Build one short, theme-based GDELT query per pillar. Returns [(pillar, query), ...].
+
+    Replaces the D-01/D-02/D-03 term bundle, which produced a 913-character query that GDELT
+    refused outright with "Your query was too short or too long." Themes are GDELT's own
+    classifications over full article text, so they are both shorter to express and more precise
+    than matching bare words — the old bundle matched the literal word "fine".
+
+    Themes are consumed in the priority order given in config/gdelt_themes.yaml and truncated to
+    fit max_query_chars, so the most valuable themes survive.
+    """
+    if themes_config is None:
+        themes_config = load_yaml("gdelt_themes")
+    max_chars = int(themes_config.get("max_query_chars", 240))
+    max_themes = int(themes_config.get("max_themes_per_query", 6))
+
+    alias = primary_alias(aliases, ticker)
+    alias_group = f'("{alias}")'
+
+    queries: list[tuple[str, str]] = []
+    for pillar, themes in (themes_config.get("pillars") or {}).items():
+        chosen: list[str] = []
+        for theme in list(themes)[:max_themes]:
+            candidate = chosen + [f"theme:{theme}"]
+            q = f'{alias_group} ({" OR ".join(candidate)})'
+            if len(q) > max_chars:
+                break
+            chosen = candidate
+        if not chosen:
+            log.warning("gdelt_no_theme_fits", ticker=ticker, pillar=pillar, alias=alias)
+            continue
+        query = f'{alias_group} ({" OR ".join(chosen)})'
+        if len(query) > max_chars:  # pragma: no cover - defensive
+            log.warning("gdelt_query_over_budget", ticker=ticker, pillar=pillar, chars=len(query))
+            continue
+        queries.append((pillar, query))
+    return queries
 
 
 def build_gdelt_queries(
@@ -221,16 +278,16 @@ class GdeltCollector(Collector):
             # Ensure ticker is considered if not already in aliases after filtering? keep as is
             if not aliases:
                 aliases = [ticker]
-        # Load ESG bundle per D-01
-        esg_terms = _load_esg_terms()
-        queries = build_gdelt_queries(aliases, esg_terms, max_chars=400)
+        # Theme-based queries (01b-02). The D-01/D-02/D-03 term bundle produced a
+        # 913-character query GDELT refused outright; these run 160-230 characters.
+        theme_queries = build_theme_queries(aliases, ticker)
 
         seen_hashes: set[str] = set()
         docs: list[RawDocument] = []
         rejected = 0
         client = get_http_client()
 
-        for query in queries:
+        for pillar, query in theme_queries:
             params: dict[str, str | int] = {
                 "query": query,
                 "mode": "artlist",
@@ -317,7 +374,9 @@ class GdeltCollector(Collector):
                     external_id=url,
                     published_at=published_at,
                     content_hash=ch,
-                    raw_json=json.dumps(art),
+                    # Record which pillar's theme query surfaced this document. Phase 2 may use
+                    # it as a prior; it is NOT a substitute for the FinBERT-ESG classifier.
+                    raw_json=json.dumps({**art, "_gdelt_pillar": pillar}),
                 )
                 docs.append(doc)
 

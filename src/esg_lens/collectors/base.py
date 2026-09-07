@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import abc
+import asyncio
 import hashlib
 import sqlite3
 import time
@@ -12,6 +13,7 @@ from datetime import datetime, timezone
 import structlog
 
 from esg_lens.collectors.http import get_http_client
+from esg_lens.config import settings
 
 log = structlog.get_logger(__name__)
 
@@ -88,17 +90,47 @@ class Collector(abc.ABC):
     ) -> list[RawDocument]:
         t0 = time.monotonic()
         self.conn = conn
+        self.last_run_id: int | None = None
         try:
-            docs = await self.fetch(ticker, since, job_id=job_id, force_refresh=force_refresh)
+            # G-3: bound the fetch. Retries against a throttled host otherwise run unbounded.
+            docs = await asyncio.wait_for(
+                self.fetch(ticker, since, job_id=job_id, force_refresh=force_refresh),
+                timeout=settings.COLLECTOR_TIMEOUT_SECONDS,
+            )
             duration_ms = int((time.monotonic() - t0) * 1000)
-            self._write_run(conn, ticker, job_id, "ok", len(docs), len(docs), None, duration_ms, since, None)
+            # N1: n_new is NOT len(docs) — that is n_fetched again, and it made collection_runs
+            # read "12 new" on a re-run that inserted zero rows. The caller owns insertion, so it
+            # reports the real count via update_run_new_count(). Left NULL until it does.
+            self.last_run_id = self._write_run(
+                conn, ticker, job_id, "ok", len(docs), None, None, duration_ms, since, None
+            )
             return docs
+        except asyncio.TimeoutError:
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            err = f"collector exceeded {settings.COLLECTOR_TIMEOUT_SECONDS}s budget"
+            log.error("collector_timeout", ticker=ticker, source=self.source, timeout_s=settings.COLLECTOR_TIMEOUT_SECONDS)
+            self.last_run_id = self._write_run(
+                conn, ticker, job_id, "failed", 0, 0, err, duration_ms, since, None
+            )
+            return []
         except Exception as e:
             duration_ms = int((time.monotonic() - t0) * 1000)
             log.error("collector_failed", ticker=ticker, source=self.source, error=str(e))
             err = str(e)[:1000]
-            self._write_run(conn, ticker, job_id, "failed", 0, 0, err, duration_ms, since, None)
+            self.last_run_id = self._write_run(
+                conn, ticker, job_id, "failed", 0, 0, err, duration_ms, since, None
+            )
             return []
+
+    def update_run_new_count(self, conn: sqlite3.Connection, n_new: int) -> None:
+        """Record how many documents the caller actually inserted (N1)."""
+        if self.last_run_id is None:
+            return
+        try:
+            conn.execute("UPDATE collection_runs SET n_new = ? WHERE id = ?", (n_new, self.last_run_id))
+            conn.commit()
+        except Exception as e:  # pragma: no cover - defensive
+            log.warning("collection_run_new_count_failed", error=str(e))
 
     def _write_run(
         self,
@@ -107,26 +139,28 @@ class Collector(abc.ABC):
         job_id: str | None,
         status: str,
         n_fetched: int,
-        n_new: int,
+        n_new: int | None,
         error: str | None,
         duration_ms: int,
         window_start: str | None = None,
         window_end: str | None = None,
-    ) -> None:
+    ) -> int | None:
         try:
-            conn.execute(
+            cur = conn.execute(
                 "INSERT INTO collection_runs (ticker, source, job_id, status, n_fetched, n_new, window_start, window_end, error, duration_ms) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (ticker, self.source, job_id, status, n_fetched, n_new, window_start, window_end, error, duration_ms),
             )
             conn.commit()
+            return cur.lastrowid
         except sqlite3.IntegrityError:
             # FK on job_id — retry without job_id so never-raise holds even if caller passed unknown job_id
             try:
-                conn.execute(
+                cur = conn.execute(
                     "INSERT INTO collection_runs (ticker, source, job_id, status, n_fetched, n_new, window_start, window_end, error, duration_ms) VALUES (?,?,?,?,?,?,?,?,?,?)",
                     (ticker, self.source, None, status, n_fetched, n_new, window_start, window_end, error, duration_ms),
                 )
                 conn.commit()
+                return cur.lastrowid
             except Exception:
                 # Last resort: ensure commit not left in transaction
                 try:
@@ -134,6 +168,7 @@ class Collector(abc.ABC):
                 except Exception:
                     pass
                 log.error("collection_runs_write_failed", ticker=ticker, source=self.source, status=status)
+        return None
 
     @property
     def http(self):

@@ -1,0 +1,81 @@
+# GDELT V2Theme mapping — Phase 1b (task 01b-02)
+#
+# Replaces the ~30-term ESG OR-bundle (D-01/D-02/D-03) that GDELT refused to serve
+# ("Your query was too short or too long." on a 913-character query).
+#
+# PROVENANCE: every theme name below was verified present in GDELT's own lookup table,
+# http://data.gdeltproject.org/api/v2/guides/LOOKUP-GKGTHEMES.TXT (59,315 themes, fetched
+# 2026-09-07). Counts in comments are that file's corpus document counts. Do NOT add a theme
+# to this file without checking it against that lookup — inventing plausible-sounding names is
+# what produced the Phase 1 failure.
+#
+# SELECTION RULE: specific over frequent. Several high-count themes were deliberately REJECTED:
+#   WB_405_BUSINESS_CLIMATE     56.1M  false friend — "business climate", not climate change
+#   CRISISLEX_C07_SAFETY       269.5M  matches any safety mention whatsoever
+#   WB_831_GOVERNANCE          117.0M  matches all government news, not corporate governance
+#   LEGISLATION / TRIAL        132.8M / 123.0M  every legal story on earth
+#   WB_137_WATER                84.2M  all water coverage
+#   TAX_FNCACT_*                       noun-phrase taxonomy (job titles), not topics
+#   DEFECTION                    1.1M  false friend — military defectors, not product defects
+#
+# Themes are listed in PRIORITY ORDER per pillar. The query builder takes as many as fit under
+# max_query_chars, so the most valuable themes survive truncation.
+
+version: "1.0.0"
+
+# Hard ceiling on a single GDELT query, including the alias group.
+# The failing Phase 1 query was 913 chars. This is deliberately conservative; the true limit is
+# unknown and cannot be measured while this IP is rate-limited (see 01b-PLAN risks).
+max_query_chars: 240
+max_themes_per_query: 6
+
+pillars:
+  E:
+    - ENV_CLIMATECHANGE                        # 12,505,779
+    - WB_601_POLLUTION_MANAGEMENT              #  2,291,117
+    - MANMADE_DISASTER_OIL_SPILL               #    364,447
+    - UNGP_CLIMATE_CHANGE_ACTION               # 11,293,262
+    - WB_1791_AIR_POLLUTION                    #  1,412,050
+    - WB_1797_SOLID_WASTE                      #    559,434
+  S:
+    - HUMAN_RIGHTS_ABUSES                      #  9,125,562
+    - DISCRIMINATION                           # 28,834,155
+    - STRIKE                                   #  9,367,538
+    - HARASSMENT                               # 10,096,946
+    - WB_364_CONSUMER_PROTECTION               #    714,363
+    - ECON_UNIONS                              # 10,589,005
+  G:
+    - CORRUPTION                               # 43,034,608
+    - WB_2020_BRIBERY_FRAUD_AND_COLLUSION      # 16,965,467
+    - CYBER_ATTACK                             #  9,671,496
+    - SANCTIONS                                # 14,603,193
+    - WB_2019_ANTI_CORRUPTION_LEGISLATION      # 17,245,106
+
+# Maps back to the 8 scoring categories in scoring.yaml, so a collected document can be
+# attributed to a category before FinBERT-ESG ever runs. Phase 2 may use this as a prior;
+# it is NOT a substitute for the classifier.
+category_hints:
+  Climate Change: [ENV_CLIMATECHANGE, UNGP_CLIMATE_CHANGE_ACTION]
+  Pollution & Waste: [WB_601_POLLUTION_MANAGEMENT, WB_1791_AIR_POLLUTION, WB_1797_SOLID_WASTE, MANMADE_DISASTER_OIL_SPILL]
+  Natural Capital: [WB_566_ENVIRONMENT_AND_NATURAL_RESOURCES]
+  Human Capital: [STRIKE, ECON_UNIONS, DISCRIMINATION, HARASSMENT]
+  Product Liability: [WB_364_CONSUMER_PROTECTION]
+  Community Relations: [HUMAN_RIGHTS_ABUSES, PROTEST]
+  Corporate Governance: [WB_2020_BRIBERY_FRAUD_AND_COLLUSION]
+  Business Ethics & Values: [CORRUPTION, WB_2019_ANTI_CORRUPTION_LEGISLATION, SANCTIONS]
+
+# KNOWN COVERAGE GAPS — accepted for v1, must be stated in the README alongside the score.
+#
+# GDELT has no theme for product recalls or product liability. The closest is
+# WB_364_CONSUMER_PROTECTION (714k, one of the smallest themes used here), so Product Liability
+# is the weakest-covered category in the S pillar and will systematically under-collect.
+#
+# GDELT has no theme for board composition, executive compensation, say-on-pay or auditor
+# disputes — the substance of Corporate Governance per scoring_methodology.md §2. G-pillar news
+# coverage therefore skews toward corruption and fraud. This partly justifies the existing design
+# decision that DEF 14A proxy filings are the primary G source (research_notes.md §2.2); news is
+# supplementary for G in a way it is not for E and S.
+#
+# Recall loss versus the old term bundle is unmeasured and unmeasurable until there is a scored
+# baseline. Do not claim the theme approach has better recall — it is claimed to have better
+# PRECISION and to actually be served by the API, which the bundle was not.

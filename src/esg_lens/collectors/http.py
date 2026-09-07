@@ -55,23 +55,41 @@ def _load_rates() -> dict[str, float]:
     return dict(_DEFAULT_RATES)
 
 
+DEFAULT_UNMAPPED_RATE = 1.0
+
+
 def _get_rate_for_host(host: str, rates: dict[str, float]) -> float:
-    """Resolve per-host rate: exact match, suffix match, then default."""
+    """Resolve a per-host request rate, deterministically (N6).
+
+    Longest matching suffix wins, so "data.sec.gov" resolves against "sec.gov" and a more
+    specific key always beats a general one regardless of dict ordering.
+
+    The previous implementation had three defects: it iterated an unordered dict and returned the
+    first match; it tested `key.endswith(host)`, which is backwards (host "gov" would match key
+    "sec.gov"); and its fallback hardcoded `return 1` for any host containing "gdelt" — the exact
+    5x-too-fast rate this phase exists to correct, silently bypassing config/sources.yaml.
+    """
+    host = (host or "").lower()
     if host in rates:
-        return rates[host]
-    # suffix match: e.g. data.sec.gov matches sec.gov
-    for key, val in rates.items():
-        if host.endswith(key) or key.endswith(host):
-            return val
-        # also handle "gdelt" generic key
-        if key in host:
-            return val
-    # EDGAR hosts default to 10, GDELT hosts to 1, else 5
-    if "sec.gov" in host:
-        return 10
-    if "gdelt" in host.lower():
-        return 1
-    return 5.0
+        return float(rates[host])
+
+    matches = [
+        (len(key), float(val))
+        for key, val in rates.items()
+        if host == key.lower() or host.endswith("." + key.lower())
+    ]
+    if matches:
+        return max(matches)[1]
+
+    # Substring keys (e.g. a bare "gdelt"), still longest-wins for determinism.
+    loose = [(len(key), float(val)) for key, val in rates.items() if key.lower() in host]
+    if loose:
+        return max(loose)[1]
+
+    # No config entry. Be conservative rather than guessing a fast rate: an unmapped host that
+    # turns out to be rate-limited should crawl, not hammer.
+    log.warning("rate_limit_host_unmapped", host=host, applied_rate=DEFAULT_UNMAPPED_RATE)
+    return DEFAULT_UNMAPPED_RATE
 
 
 # ---------------------------------------------------------------------------
@@ -86,18 +104,32 @@ class TokenBucketTransport(httpx.AsyncBaseTransport):
     asyncio.sleep when bucket empty, keyed by request.url.host.
     """
 
-    def __init__(self, transport: httpx.AsyncBaseTransport, rates: dict[str, float]) -> None:
+    def __init__(
+        self,
+        transport: httpx.AsyncBaseTransport,
+        rates: dict[str, float],
+        enabled: bool = True,
+    ) -> None:
         self.transport = transport
         self.rates = rates
+        self.enabled = enabled
         self._buckets: dict[str, dict[str, float]] = {}
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        if not self.enabled:
+            return await self.transport.handle_async_request(request)
         host = request.url.host or ""
         rate = _get_rate_for_host(host, self.rates)
-        bucket = self._buckets.setdefault(host, {"tokens": rate, "updated": time.monotonic()})
+        # N4: capacity must be at least 1 whole token. Initialising to `rate` means that at
+        # 0.2/s the bucket starts with 0.2 tokens and EVERY request pays a ~4s pre-wait before
+        # its first call — the mechanical cause of the 10-minute stall observed during Phase 1
+        # UAT (gap G-3). Burst capacity of one request is correct: the limiter should throttle
+        # sustained rate, not punish the first call.
+        capacity = max(1.0, rate)
+        bucket = self._buckets.setdefault(host, {"tokens": capacity, "updated": time.monotonic()})
         now = time.monotonic()
         elapsed = now - bucket["updated"]
-        bucket["tokens"] = min(rate, bucket["tokens"] + elapsed * rate)
+        bucket["tokens"] = min(capacity, bucket["tokens"] + elapsed * rate)
         bucket["updated"] = now
         if bucket["tokens"] < 1:
             wait = (1 - bucket["tokens"]) / rate
@@ -175,7 +207,9 @@ class AsyncHttpClient:
 
         # Transport chain: token bucket inside hishel cache (cache hit bypasses rate limit)
         inner = transport or httpx.AsyncHTTPTransport()
-        self._token_transport = TokenBucketTransport(transport=inner, rates=self._rates)
+        self._token_transport = TokenBucketTransport(
+            transport=inner, rates=self._rates, enabled=settings.RATE_LIMIT_ENABLED
+        )
         self._cache_transport = AsyncCacheTransport(
             next_transport=self._token_transport,
             storage=self._storage,

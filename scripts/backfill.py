@@ -57,6 +57,7 @@ async def backfill_tickers(
 
     total_fetched = 0
     total_new = 0
+    per_source: dict[str, int] = {}
 
     # Validate and cap at 25 tickers per plan
     tickers = [t.strip().upper() for t in tickers if t.strip()]
@@ -137,7 +138,9 @@ async def backfill_tickers(
                 except Exception as e:
                     log.warning("document_insert_failed", ticker=ticker, error=str(e))
 
-            # Write collection_runs already handled by safe_fetch but ensure backfill counts n_new correctly; log
+            # N1: report the REAL insert count back onto the collection_runs row safe_fetch wrote.
+            collector.update_run_new_count(conn, n_new)
+            per_source[collector.source] = per_source.get(collector.source, 0) + n_fetched
             log.info(
                 "backfill_ticker_done",
                 ticker=ticker,
@@ -153,7 +156,23 @@ async def backfill_tickers(
         except Exception:
             pass
 
-    return {"n_fetched": total_fetched, "n_new": total_new}
+    # G-2: a source that collected NOTHING across every ticker is a failure, not a quiet
+    # success. Phase 1 exited 0 printing "fetched=15 new=15" while GDELT — the primary news
+    # source — returned zero documents for every ticker, and that survived three days.
+    dead_sources = sorted(k for k, v in per_source.items() if v == 0)
+    if dead_sources:
+        log.error(
+            "backfill_source_collected_nothing",
+            sources=dead_sources,
+            tickers=len(tickers),
+            hint="check collection_runs.error for these sources",
+        )
+    return {
+        "n_fetched": total_fetched,
+        "n_new": total_new,
+        "per_source": per_source,
+        "dead_sources": dead_sources,
+    }
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -192,12 +211,22 @@ async def _async_main(args: argparse.Namespace) -> None:
         job_id=args.job_id,
     )
     log.info("backfill_complete", **result)
+    per_source = result.get("per_source", {})
+    breakdown = " ".join(f"{k}={v}" for k, v in sorted(per_source.items())) or "(no sources ran)"
     print(f"Backfill complete: fetched={result['n_fetched']} new={result['n_new']} tickers={tickers}")
+    print(f"  by source: {breakdown}")
     if conn:
         try:
             conn.close()
         except Exception:
             pass
+
+    # G-2: exit non-zero so a dead source cannot pass for success in CI, a cron job, or a
+    # terminal someone skims. The per-source breakdown above says which one.
+    dead = result.get("dead_sources") or []
+    if dead:
+        print(f"  FAILED: collected 0 documents from {', '.join(dead)} across all tickers")
+        raise SystemExit(2)
 
 
 def main(argv: list[str] | None = None) -> None:

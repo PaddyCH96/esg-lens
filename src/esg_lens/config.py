@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     RETENTION_DAYS: int = Field(default=30, ge=1)
     MAX_CONCURRENT_JOBS: int = Field(default=1, ge=1)
     MAX_TICKERS_PER_JOB: int = Field(default=25, ge=1, le=100)
+    # Wall-clock budget for a single collector fetch (gap G-3). Without a deadline, tenacity
+    # retries against a throttled host stall the whole run: Phase 1 UAT saw a backfill make no
+    # progress for 10+ minutes with no cancellation path.
+    COLLECTOR_TIMEOUT_SECONDS: int = Field(default=120, ge=5, le=900)
+    # Tests mock the network with respx, so paying real token-bucket waits buys nothing and cost
+    # the suite ~2 minutes. conftest disables this; it is ON everywhere else. The behavioural
+    # rate-limit tests construct TokenBucketTransport directly and are unaffected.
+    RATE_LIMIT_ENABLED: bool = Field(default=True)
 
     # Feature flags
     NEWSAPI_ENABLED: bool = Field(default=False)

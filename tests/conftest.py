@@ -7,6 +7,14 @@ from pathlib import Path
 import pytest
 from hishel import AsyncSqliteStorage
 
+from esg_lens.config import settings
+
+# Every network-touching test mocks httpx with respx, so real token-bucket waits buy nothing and
+# cost the suite roughly two minutes (0.2 req/s x 3 GDELT pillar queries per test). Disable the
+# limiter process-wide for tests. tests/unit/test_rate_limit_behaviour.py constructs
+# TokenBucketTransport directly with enabled defaulting to True, so the limiter is still tested.
+settings.RATE_LIMIT_ENABLED = False
+
 
 @pytest.fixture()
 def hishel_temp_storage(tmp_path):
