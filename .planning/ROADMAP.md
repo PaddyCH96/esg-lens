@@ -226,13 +226,13 @@ Phases execute in numeric order: 0 → 1 → **1b** → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 0. Scaffold | 2/2 | ✅ Complete | 2026-09-03 (`d8902dc`) |
 | 1. Collectors | 3/3 | 🔴 **FAILED verification** — GDELT collects 0 docs | - |
-| 1b. GDELT Rework | 0/4 | Planned — blocks Phase 2 | - |
+| 1b. GDELT Rework | 3/4 | 🟡 01b-04 blocked on GDELT IP cooldown | - |
 | 2. NLP Pipeline | 0/3 | Not started | - |
 | 3. Scoring Engine | 0/3 | Not started (acceptance test written) | - |
 | 4. API & Jobs | 0/5 | Not started | - |
 | 5. Validation & Publication | 0/2 | Not started | - |
 
-**Overall: 5/22 plans (23%).** Verified 2026-09-05; Phase 1b (4 plans) added 2026-09-07 after Phase 1 failed verification.
+**Overall: 8/22 plans (36%).** Verified 2026-09-05; Phase 1b (4 plans) added 2026-09-07 after Phase 1 failed verification.
 
 Notes:
 - Phase 0 was executed outside the GSD plan flow, so there is no `.planning/phases/00-scaffold/`

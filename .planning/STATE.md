@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: execution
-stopped_at: Phase 1b planned — GDELT theme-based query rework, ready to execute
+stopped_at: Phase 1b tasks 01b-01..03 complete; 01b-04 blocked on GDELT IP cooldown
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05 — State reconciled with codebase; Phase 3 acceptance fixture written ahead of implementation
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 22
-  completed_plans: 5
-  percent: 23
+  completed_plans: 8
+  percent: 36
 ---
 
 # Project State
@@ -28,7 +28,30 @@ formula behind any number are visible, and the system says `insufficient_data` r
 
 Phase: 1 of 5 (Collectors) — numbering follows docs/handoff_to_backend.md §1 (Phase 0–5)
 Plan: 3 of 3 executed in current phase
-Status: **Phase 1 FAILED verification (2026-09-07).** UAT ran 7/7: 4 pass, 2 fail, 1 vacuous.
+Status: **Phase 1b in progress — 3 of 4 tasks complete (2026-09-07).**
+
+### Resume here
+
+`01b-01`, `01b-02`, `01b-03` are done, committed and pushed. **`01b-04` is the only thing left**
+and it is blocked on an external condition, not on work:
+
+> GDELT is rate-limiting this IP. As of 2026-09-07 a 25-character query at 11-second spacing still
+> returns 429. This was self-inflicted by burst probing during UAT. **Wait at least a day.**
+> When retrying, the plan's stop condition is binding: send ONE request; if it 429s, stop. Looping
+> is what caused this.
+
+Once GDELT serves this IP again, `01b-04` is: cold-start `backfill.py --tickers AAPL,XOM`, confirm
+`raw_documents` gets rows with `source='gdelt'`, re-run for dedup, then re-run all 7 Phase 1 UAT
+tests and the Phase 1 verification. See `.planning/phases/01b-gdelt-rework/01b-PLAN.md`.
+
+What changed in 01b-01..03: GDELT queries went from 913 characters (which the API refused) to
+159-230 using GDELT's own V2Themes; the test suite can now actually fail on this defect (verified
+by disabling the guard and watching it go red); and the rate limiter, `n_new` accounting and
+dead-source reporting are all honest now. Suite: 82 passed, 17 skipped, 22s.
+
+### Prior status
+
+**Phase 1 FAILED verification (2026-09-07).** UAT ran 7/7: 4 pass, 2 fail, 1 vacuous.
 GDELT collects zero documents — it rejects our queries outright and its rate limit is 5x slower
 than configured. Phase 1 requires a GDELT query-strategy redesign before Phase 2 can start.
 See `01-UAT.md` and `01-VERIFICATION.md`. **Phase 1b is planned** — see
