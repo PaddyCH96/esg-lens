@@ -159,3 +159,31 @@ The cold-start run resolved XOM to CIK 0002115436, "ExxonMobil Holdings Corporat
 wrong against the long-standing CIK 0000034088. Verified directly against SEC's own
 company_tickers.json: SEC maps XOM to 2115436 / "ExxonMobil Holdings Corp". The collector is
 correct and Exxon has reorganised. AAPL resolves to 320193 as expected. No defect.
+
+---
+
+## Post-verification findings (gsd-verifier, 2026-09-07)
+
+Independently confirmed against the database and source before acting on them:
+
+- **N2 (fixed)** — the JSON-parse guard added earlier in this UAT made observability *worse*.
+  Skipping a rejected chunk let `safe_fetch` return normally, so a total failure was recorded as
+  `XOM|gdelt|ok|0|0`. The pre-fix `failed` row was more honest. Now: if every query is rejected
+  and zero documents result, the collector raises, and `safe_fetch` records `status=failed` with
+  the reason. Partial rejection logs `gdelt_partial_collection` and still returns what it got.
+- **N5 (fixed)** — `AsyncHttpClient` built two `TokenBucketTransport` instances (cached and
+  force-refresh) with independent per-host bucket dicts, so a force-refresh run received a second
+  full budget: up to 2x the configured rate, i.e. 20 req/s against sec.gov. That is exactly the
+  IP-block failure the limiter exists to prevent. The bypass client now shares one bucket.
+- **N1 (open)** — `safe_fetch` writes `n_new = len(docs)`, a duplicate of `n_fetched`. The
+  re-run rows read `edgar|ok|12|12` although zero rows were inserted (proven in UAT 2). `n_new`
+  has never meant anything. Fixing it needs insert counts plumbed back from the caller, so it
+  belongs with the Phase 1 rework, not a patch.
+- **N3 (open)** — every GDELT integration fixture mocks a 200 JSON body, so the suite asserts a
+  contract the live API refuses and cannot go red on G-1. Add a fixture reproducing the real
+  "Your query was too short or too long." response as part of the rework.
+- **N4 (open)** — token buckets initialise capacity to `rate`, so at 0.2/s the bucket never holds
+  a whole token and every request pays a ~4s pre-wait. With 429 in the retry set and no overall
+  deadline, this is the mechanical cause of the 10-minute stall in G-3.
+- **N6 (open)** — `_get_rate_for_host` matches with `key in host` / `key.endswith(host)` over an
+  unordered dict, so host-to-rate resolution is order-dependent.

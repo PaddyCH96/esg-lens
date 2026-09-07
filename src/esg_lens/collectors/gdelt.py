@@ -227,6 +227,7 @@ class GdeltCollector(Collector):
 
         seen_hashes: set[str] = set()
         docs: list[RawDocument] = []
+        rejected = 0
         client = get_http_client()
 
         for query in queries:
@@ -268,6 +269,7 @@ class GdeltCollector(Collector):
                     status=resp.status_code,
                     body=resp.text[:200],
                 )
+                rejected += 1
                 continue
             try:
                 data = resp.json()
@@ -278,6 +280,7 @@ class GdeltCollector(Collector):
                     content_type=resp.headers.get("content-type"),
                     body=resp.text[:200],
                 )
+                rejected += 1
                 continue
             articles = data.get("articles") or []
             for art in articles:
@@ -318,4 +321,15 @@ class GdeltCollector(Collector):
                 )
                 docs.append(doc)
 
+        # A source that produced nothing because the API refused every query is a FAILURE,
+        # not an empty result. Raising here lets safe_fetch record status=failed with the
+        # reason, instead of writing status=ok / n_fetched=0 — which is what "skip the bad
+        # chunk" alone produced, and is total failure disguised as success.
+        if rejected and not docs:
+            raise RuntimeError(
+                f"GDELT rejected all {rejected} quer{'y' if rejected == 1 else 'ies'} "
+                f"for {ticker}; zero documents collected"
+            )
+        if rejected:
+            log.warning("gdelt_partial_collection", ticker=ticker, rejected=rejected, collected=len(docs))
         return docs

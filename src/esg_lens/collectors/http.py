@@ -193,9 +193,14 @@ class AsyncHttpClient:
             headers=headers,
             timeout=timeout,
         )
-        # Bypass client for force_refresh (rate-limited but not cached)
+        # Bypass client for force_refresh (rate-limited but not cached).
+        # MUST reuse self._token_transport rather than constructing a second
+        # TokenBucketTransport: buckets are per-instance, so a separate one hands the
+        # force-refresh path its own full budget and the process can reach 2x the configured
+        # rate against a host. At 10/s for sec.gov that is 20/s, which is precisely the
+        # "SEC blocks the IP" failure the rate limiter exists to prevent.
         self._bypass_client = httpx.AsyncClient(
-            transport=TokenBucketTransport(transport=httpx.AsyncHTTPTransport(), rates=self._rates),
+            transport=self._token_transport,
             headers=headers,
             timeout=timeout,
         )
