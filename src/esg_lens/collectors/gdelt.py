@@ -258,7 +258,27 @@ class GdeltCollector(Collector):
                 params=params,
                 force_refresh=force_refresh,
             )
-            data = resp.json()
+            # GDELT returns plain text for 429s and for some malformed-query 200s, so the
+            # body is not always JSON. Guard the parse: a bad chunk must not discard the
+            # documents an earlier chunk already returned, and must not fail the collector.
+            if resp.status_code != 200:
+                log.warning(
+                    "gdelt_non_200_skipped",
+                    ticker=ticker,
+                    status=resp.status_code,
+                    body=resp.text[:200],
+                )
+                continue
+            try:
+                data = resp.json()
+            except ValueError:
+                log.warning(
+                    "gdelt_non_json_body_skipped",
+                    ticker=ticker,
+                    content_type=resp.headers.get("content-type"),
+                    body=resp.text[:200],
+                )
+                continue
             articles = data.get("articles") or []
             for art in articles:
                 title = art.get("title")

@@ -205,6 +205,19 @@ class EdgarCollector(Collector):
             log.warning("edgar_no_cik", ticker=ticker_up)
             return []
 
+        # Persist the resolved CIK. data_model.md defines companies.cik, but nothing was
+        # writing it: yfinance has no CIK to supply and EDGAR resolved it per-run and threw it
+        # away, so the column stayed NULL forever. Best-effort — never fail collection over it.
+        if self.conn is not None:
+            try:
+                self.conn.execute(
+                    "UPDATE companies SET cik = ? WHERE ticker = ? AND (cik IS NULL OR cik != ?)",
+                    (cik_padded, ticker_up, cik_padded),
+                )
+                self.conn.commit()
+            except Exception as e:  # pragma: no cover - defensive, collectors never raise
+                log.warning("edgar_cik_persist_failed", ticker=ticker_up, error=str(e))
+
         # submissions API https://data.sec.gov/submissions/CIK##########.json with header Host data.sec.gov
         submissions_url = f"https://data.sec.gov/submissions/CIK{cik_padded}.json"
         headers = {

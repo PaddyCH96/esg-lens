@@ -71,6 +71,12 @@ class Collector(abc.ABC):
     ) -> list[RawDocument]:
         ...
 
+    # Set by safe_fetch for the duration of a fetch, so a collector can persist metadata it
+    # resolves along the way (e.g. EDGAR writing back companies.cik). fetch() deliberately does
+    # not take a connection — collectors return documents, they do not own persistence — but a
+    # resolved identifier is worth keeping rather than rediscovering every run.
+    conn: sqlite3.Connection | None = None
+
     async def safe_fetch(
         self,
         conn: sqlite3.Connection,
@@ -81,6 +87,7 @@ class Collector(abc.ABC):
         force_refresh: bool = False,
     ) -> list[RawDocument]:
         t0 = time.monotonic()
+        self.conn = conn
         try:
             docs = await self.fetch(ticker, since, job_id=job_id, force_refresh=force_refresh)
             duration_ms = int((time.monotonic() - t0) * 1000)

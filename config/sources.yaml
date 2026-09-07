@@ -45,8 +45,11 @@ filing:
 # Rate limits per host (§5.1, handoff Phase 1)
 rate_limits:
   sec.gov: 10
-  api.gdeltproject.org: 1
-  gdelt: 1
+  # GDELT's own 429 body states: "Please limit requests to one every 5 seconds".
+  # research_notes.md §2.3 guessed 1/s and marked it [VERIFY]; verified 2026-09-06 the hard way
+  # (sustained 429s that killed every GDELT collection). 0.2 req/s == one per 5 seconds.
+  api.gdeltproject.org: 0.2
+  gdelt: 0.2
 
 # Cache TTL in hours
 cache_ttl_hours: 24
