@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: execution
-stopped_at: Phase 1 FAILED verification — GDELT query redesign required
+stopped_at: Phase 1b planned — GDELT theme-based query rework, ready to execute
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05 — State reconciled with codebase; Phase 3 acceptance fixture written ahead of implementation
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 18
+  total_plans: 22
   completed_plans: 5
-  percent: 28
+  percent: 23
 ---
 
 # Project State
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-09-02)
 
 **Core value:** Every score is fully auditable and reproducible — the exact documents, weights and
 formula behind any number are visible, and the system says `insufficient_data` rather than inventing one.
-**Current focus:** Phase 1 — Collectors (UAT), then Phase 2 — NLP Pipeline
+**Current focus:** Phase 1b — GDELT rework (blocks Phase 2)
 
 ## Current Position
 
@@ -31,7 +31,9 @@ Plan: 3 of 3 executed in current phase
 Status: **Phase 1 FAILED verification (2026-09-07).** UAT ran 7/7: 4 pass, 2 fail, 1 vacuous.
 GDELT collects zero documents — it rejects our queries outright and its rate limit is 5x slower
 than configured. Phase 1 requires a GDELT query-strategy redesign before Phase 2 can start.
-See `01-UAT.md` and `01-VERIFICATION.md`.
+See `01-UAT.md` and `01-VERIFICATION.md`. **Phase 1b is planned** — see
+`.planning/phases/01b-gdelt-rework/01b-PLAN.md`. Tasks 01b-01..03 are offline and can start
+immediately; 01b-04 needs live GDELT access, which is currently withheld from this IP.
 Last activity: 2026-09-05 — planning state reconciled against the codebase (it had drifted to 0%
 while Phases 0 and 1 were already built and pushed), and the Phase 3 acceptance fixture was
 written ahead of any scoring code.

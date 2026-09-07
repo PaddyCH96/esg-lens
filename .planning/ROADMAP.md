@@ -220,18 +220,19 @@ Deliberately *not* v1 phases. Recorded here so they are not mistaken for unfinis
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 0 → 1 → **1b** → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Scaffold | 2/2 | ✅ Complete | 2026-09-03 (`d8902dc`) |
 | 1. Collectors | 3/3 | 🔴 **FAILED verification** — GDELT collects 0 docs | - |
+| 1b. GDELT Rework | 0/4 | Planned — blocks Phase 2 | - |
 | 2. NLP Pipeline | 0/3 | Not started | - |
 | 3. Scoring Engine | 0/3 | Not started (acceptance test written) | - |
 | 4. API & Jobs | 0/5 | Not started | - |
 | 5. Validation & Publication | 0/2 | Not started | - |
 
-**Overall: 5/18 plans (28%).** Verified against the codebase on 2026-09-05.
+**Overall: 5/22 plans (23%).** Verified 2026-09-05; Phase 1b (4 plans) added 2026-09-07 after Phase 1 failed verification.
 
 Notes:
 - Phase 0 was executed outside the GSD plan flow, so there is no `.planning/phases/00-scaffold/`
@@ -242,6 +243,11 @@ Notes:
   5 seconds, not the 1/s the config assumed. See `01-UAT.md` (G-1..G-4) and `01-VERIFICATION.md`
   (N1..N6). **Phase 1 needs rework before Phase 2**: an NLP pipeline whose gates are all
   news-shaped cannot be meaningfully tested on a filings-only corpus.
+- Phase 1b (`.planning/phases/01b-gdelt-rework/01b-PLAN.md`) is the rework. Core decision: replace
+  the 30-term ESG OR-bundle with GDELT's own `V2Themes` operators, which `research_notes.md` §2.3
+  identified and Phase 1 never used. Short queries fix the rejection; GDELT's own classifier
+  improves precision over matching bare words like "fine". Tasks 01b-01..03 are fully offline;
+  only 01b-04 needs live GDELT, which is currently rate-limited for this IP.
 - Phase 3's acceptance fixture (`tests/unit/test_scoring_fixture.py`) is written and skipping.
   It activates automatically the moment `src/esg_lens/scoring/` becomes importable, which is the
   intended TDD gate from `docs/handoff_to_backend.md` Phase 3.
