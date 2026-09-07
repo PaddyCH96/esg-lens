@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: execution
-stopped_at: Phase 1 executed (3/3 plans); UAT in progress 1/7
+stopped_at: Phase 1 FAILED verification — GDELT query redesign required
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05 — State reconciled with codebase; Phase 3 acceptance fixture written ahead of implementation
 progress:
@@ -28,8 +28,10 @@ formula behind any number are visible, and the system says `insufficient_data` r
 
 Phase: 1 of 5 (Collectors) — numbering follows docs/handoff_to_backend.md §1 (Phase 0–5)
 Plan: 3 of 3 executed in current phase
-Status: Phase 1 code complete and committed; **UAT 1/7 passed, 6 pending** — see
-`.planning/phases/01-collectors/01-UAT.md`. Phase 1 is not verified until UAT closes.
+Status: **Phase 1 FAILED verification (2026-09-07).** UAT ran 7/7: 4 pass, 2 fail, 1 vacuous.
+GDELT collects zero documents — it rejects our queries outright and its rate limit is 5x slower
+than configured. Phase 1 requires a GDELT query-strategy redesign before Phase 2 can start.
+See `01-UAT.md` and `01-VERIFICATION.md`.
 Last activity: 2026-09-05 — planning state reconciled against the codebase (it had drifted to 0%
 while Phases 0 and 1 were already built and pushed), and the Phase 3 acceptance fixture was
 written ahead of any scoring code.

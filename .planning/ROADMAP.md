@@ -225,7 +225,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Scaffold | 2/2 | ✅ Complete | 2026-09-03 (`d8902dc`) |
-| 1. Collectors | 3/3 | 🟡 Executed — UAT 1/7 | code 2026-09-03 (`854236c`) |
+| 1. Collectors | 3/3 | 🔴 **FAILED verification** — GDELT collects 0 docs | - |
 | 2. NLP Pipeline | 0/3 | Not started | - |
 | 3. Scoring Engine | 0/3 | Not started (acceptance test written) | - |
 | 4. API & Jobs | 0/5 | Not started | - |
@@ -236,8 +236,12 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5
 Notes:
 - Phase 0 was executed outside the GSD plan flow, so there is no `.planning/phases/00-scaffold/`
   directory and no PLAN/SUMMARY artifacts for it. The code and tests exist and pass.
-- Phase 1 is **code complete but not verified**. 6 of 7 UAT tests are pending in
-  `.planning/phases/01-collectors/01-UAT.md`. Do not mark the phase done until they close.
+- Phase 1 **failed verification on 2026-09-07**. UAT ran 7/7: 4 pass, 2 fail, 1 vacuous.
+  GDELT — the primary news source — collects zero documents: it rejects the constructed queries
+  with "Your query was too short or too long.", and its real rate limit is one request per
+  5 seconds, not the 1/s the config assumed. See `01-UAT.md` (G-1..G-4) and `01-VERIFICATION.md`
+  (N1..N6). **Phase 1 needs rework before Phase 2**: an NLP pipeline whose gates are all
+  news-shaped cannot be meaningfully tested on a filings-only corpus.
 - Phase 3's acceptance fixture (`tests/unit/test_scoring_fixture.py`) is written and skipping.
   It activates automatically the moment `src/esg_lens/scoring/` becomes importable, which is the
   intended TDD gate from `docs/handoff_to_backend.md` Phase 3.
