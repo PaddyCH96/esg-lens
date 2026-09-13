@@ -93,12 +93,22 @@ implicitly competes with. Their well-documented weaknesses are also our design c
   the backbone of an open-source project other people will run. GDELT carries v1.
 - **Alternatives worth evaluating in the same slot:** RSS feeds from major outlets (free, legal,
   full headlines), and Yahoo's `Ticker.news`.
+- **2026-09-14: RSS was evaluated and adopted as primary.** Google News search RSS is queryable
+  and honours `when:Nd`, making it the closest functional replacement for the GDELT DOC API;
+  Yahoo's per-ticker feed guarantees entity identity. Both probed live before implementation.
 
 ### 2.5 Source summary
 
+> **UPDATED 2026-09-14.** GDELT's DOC API refused this IP for 8+ days (429 on a single short
+> query) while its static host served normally. RSS replaced it as the primary news source —
+> see `.planning/phases/01c-rss-primary/01c-DECISION.md`. Measured on the same two tickers:
+> GDELT 0 documents in 3m23s, RSS 227 documents in 17s.
+
 | Source | Key needed | Cost | Role in v1 | Refresh |
 |---|---|---|---|---|
-| GDELT DOC 2.1 | No | Free | Primary news signal | daily |
+| **Google News RSS** | **No** | **Free** | **Primary news signal** | **daily** |
+| **Yahoo ticker RSS** | **No** | **Free** | **Entity-guaranteed news** | **daily** |
+| GDELT DOC 2.1 | No | Free | Retained, opt-in (`ESG_ENABLE_GDELT=1`) — blocked for this IP | daily |
 | SEC EDGAR | No (UA required) | Free | Filings baseline, G pillar | quarterly |
 | yfinance | No | Free | Metadata, sector, benchmark | weekly |
 | NewsAPI free | Yes | Free/limited | Optional supplement (flagged off) | daily |

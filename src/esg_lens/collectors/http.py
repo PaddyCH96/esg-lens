@@ -241,7 +241,7 @@ class AsyncHttpClient:
 
     async def _request_with_retry(self, client: httpx.AsyncClient, method: str, url: str, **kwargs: Any) -> httpx.Response:
         async for attempt in AsyncRetrying(
-            stop=stop_after_attempt(5),
+            stop=stop_after_attempt(settings.HTTP_MAX_RETRY_ATTEMPTS),
             wait=wait_exponential(multiplier=1, min=2, max=10),
             retry=retry_if_exception(_is_retryable),
             before_sleep=before_sleep_log(log, log_level=20),  # INFO

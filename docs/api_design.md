@@ -47,7 +47,7 @@ Queues an analysis. Returns immediately — **never blocks on NLP**.
   "tickers": ["AAPL", "XOM", "JPM"],
   "force_refresh": false,
   "lookback_days": 365,
-  "sources": ["gdelt", "edgar", "yfinance"]
+  "sources": ["rss", "edgar", "yfinance"]
 }
 ```
 
@@ -56,7 +56,7 @@ Queues an analysis. Returns immediately — **never blocks on NLP**.
 | `tickers` | `string[]` | ✅ | — | 1–25 items, deduped, uppercased |
 | `force_refresh` | `bool` | ✗ | `false` | Bypass the HTTP cache and re-collect |
 | `lookback_days` | `int` | ✗ | `365` | 30–730 |
-| `sources` | `string[]` | ✗ | all enabled | Subset of `gdelt`, `edgar`, `yfinance`, `newsapi`. Must match the `raw_documents.source` CHECK exactly — adding a collector means updating both. |
+| `sources` | `string[]` | ✗ | all enabled | Subset of `rss`, `edgar`, `yfinance`, `gdelt`, `newsapi`. `rss` is the primary news source; `gdelt` is retained but off by default. Must match the `raw_documents.source` CHECK exactly — adding a collector means updating both. |
 
 **`202 Accepted`**
 ```json

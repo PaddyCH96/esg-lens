@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: execution
-stopped_at: Phase 1b code-complete; blocked on an ARCHITECTURE DECISION, not on work
+stopped_at: Phase 1c complete — RSS is primary, news flows. Phase 2 unblocked.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05 — State reconciled with codebase; Phase 3 acceptance fixture written ahead of implementation
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 22
-  completed_plans: 9
-  percent: 41
+  completed_plans: 10
+  percent: 43
 ---
 
 # Project State
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-09-02)
 
 **Core value:** Every score is fully auditable and reproducible — the exact documents, weights and
 formula behind any number are visible, and the system says `insufficient_data` rather than inventing one.
-**Current focus:** Phase 1b — GDELT rework (blocks Phase 2)
+**Current focus:** Phase 2 — NLP Pipeline (unblocked 2026-09-14)
 
 ## Current Position
 

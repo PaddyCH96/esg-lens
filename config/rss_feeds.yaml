@@ -1,0 +1,84 @@
+# RSS news sources — replaces GDELT as the primary news collector.
+#
+# WHY: GDELT's DOC API refused this IP for 8+ days (HTTP 429 on a single short query) while its
+# static host served us fine, so the block is endpoint-and-IP specific and not something the
+# codebase can fix. research_notes.md §2.4 already listed RSS as the alternative to evaluate.
+# See .planning/phases/01c-rss-primary/ for the decision record.
+#
+# PROVENANCE: every endpoint below was probed live on 2026-09-14 before being written here —
+# Google News search RSS returned 100 items and honours the `when:Nd` operator; Yahoo's
+# per-ticker feed returned 16. Captured responses live in tests/fixtures/rss_*.xml.
+# Do not add a feed to this file without probing it first. Writing a spec on assumptions is what
+# produced the GDELT failure.
+
+version: "1.0.0"
+
+# ---------------------------------------------------------------------------
+# Feed templates. {query} and {ticker} are substituted by the collector.
+# ---------------------------------------------------------------------------
+feeds:
+  # PRIMARY. Queryable, ~100 items max, supports `when:Nd` for a lookback window.
+  # This is the closest functional replacement for the GDELT DOC API.
+  google_news:
+    enabled: true
+    kind: query          # collector builds one request per pillar
+    url: "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
+    lookback_days: 90
+    max_items: 100
+
+  # SECONDARY. Entity-guaranteed: Yahoo tags these to the ticker itself, so no name
+  # disambiguation is needed and "Apple the fruit" cannot appear. In exchange it is generic
+  # financial news, NOT ESG-filtered — the FinBERT-ESG relevance gate does that work in Phase 2.
+  yahoo_ticker:
+    enabled: true
+    kind: ticker         # one request per ticker
+    url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+    max_items: 50
+
+# ---------------------------------------------------------------------------
+# Per-pillar ESG query terms.
+#
+# Google News has no equivalent of GDELT's V2Themes, so terms come back — but deliberately NOT
+# the 30-term bundle that broke GDELT. These are short, high-signal, and scoped per pillar.
+#
+# "fine" is excluded on purpose. It was in the original GDELT bundle and is catastrophically
+# ambiguous ("fine weather", "doing fine"); "fined" and "penalty" carry the same signal without
+# the noise. This is the single clearest lesson from the Phase 1 corpus.
+# ---------------------------------------------------------------------------
+pillar_terms:
+  E:
+    - pollution
+    - spill
+    - emissions
+    - climate
+    - contamination
+  S:
+    - lawsuit
+    - discrimination
+    - "labor dispute"
+    - recall
+    - strike
+  G:
+    - fraud
+    - bribery
+    - corruption
+    - investigation
+    - "shareholder revolt"
+
+# Hard ceiling on a rendered query string, before URL-encoding.
+max_query_chars: 200
+
+# ---------------------------------------------------------------------------
+# Known limitations — state these in the README alongside any score.
+#
+# 1. Google News <link> is a news.google.com redirect, NOT the publisher URL. The real publisher
+#    comes from the <source url="..."> element, and that is what feeds the source-credibility
+#    tier in scoring_methodology.md §5. Parsing the domain out of <link> would classify every
+#    document as news.google.com and collapse w_src to a single tier.
+# 2. Titles carry a " - Publisher" suffix which must be stripped before NLP, or every headline
+#    ends with a publisher name and pollutes sentiment and entity extraction.
+# 3. Google News RSS is undocumented. It has no published rate limit and no stability guarantee.
+#    Treat it exactly as yfinance is treated: wrap it, cache it, and degrade gracefully.
+#    We are rate-limiting ourselves to 0.5 req/s by choice, not by instruction.
+# 4. Coverage is Google's editorial choice, as GDELT's was its classifier's. Recall is unmeasured
+#    and unmeasurable until there is a scored baseline.

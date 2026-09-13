@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # the suite ~2 minutes. conftest disables this; it is ON everywhere else. The behavioural
     # rate-limit tests construct TokenBucketTransport directly and are unaffected.
     RATE_LIMIT_ENABLED: bool = Field(default=True)
+    # Retry attempts per HTTP request. 5 with exponential backoff is right in production, but in
+    # tests a mocked 429/503 then costs ~16s per request of pure sleeping. conftest sets this to 1.
+    HTTP_MAX_RETRY_ATTEMPTS: int = Field(default=5, ge=1, le=10)
 
     # Feature flags
     NEWSAPI_ENABLED: bool = Field(default=False)

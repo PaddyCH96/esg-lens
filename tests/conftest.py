@@ -14,6 +14,9 @@ from esg_lens.config import settings
 # limiter process-wide for tests. tests/unit/test_rate_limit_behaviour.py constructs
 # TokenBucketTransport directly with enabled defaulting to True, so the limiter is still tested.
 settings.RATE_LIMIT_ENABLED = False
+# Mocked 429/503 responses otherwise cost ~16s each in tenacity backoff. Retry logic itself is
+# covered by test_http_client.py::test_retry_predicate_only_retries_429_and_5xx.
+settings.HTTP_MAX_RETRY_ATTEMPTS = 1
 
 
 @pytest.fixture()

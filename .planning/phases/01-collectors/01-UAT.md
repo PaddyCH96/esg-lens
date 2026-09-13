@@ -4,7 +4,7 @@ phase: 01-collectors
 source: [01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md]
 started: 2026-09-03T20:00:00Z
 updated: 2026-09-07T00:00:00Z
-verdict: FAIL — 2 of 7 failed; GDELT collects zero documents
+verdict: PASS (2026-09-14) — 6 of 7 pass after RSS replaced GDELT; 1 vacuous
 ---
 
 ## Current Test
@@ -187,3 +187,31 @@ Independently confirmed against the database and source before acting on them:
   deadline, this is the mechanical cause of the 10-minute stall in G-3.
 - **N6 (open)** — `_get_rate_for_host` matches with `key in host` / `key.endswith(host)` over an
   unordered dict, so host-to-rate resolution is order-dependent.
+
+
+---
+
+## Re-run 2026-09-14 — after RSS replaced GDELT (phase 01c)
+
+The two failures were both GDELT-dependent. RSS is now the primary news source
+(`.planning/phases/01c-rss-primary/01c-DECISION.md`). Re-run on the same two tickers:
+
+### 1. Cold Start + Backfill — **PASS** (was FAIL)
+242 documents: 227 RSS + 15 EDGAR. `dead_sources=[]`, exit 0, 17 seconds.
+Under GDELT this collected 0 news documents in 3m23s and exited 2.
+Corpus spans 2026-06-16..2026-09-13; zero null domains, titles or URLs; zero news.google.com
+leakage (publisher domains parsed from `<source url>`, not the Google redirect `<link>`).
+
+### 2. Re-run dedup — **PASS**
+242 fetched, **0 inserted**, `raw_documents` 242 -> 242, every `n_new=0`.
+
+### 6. Query construction — **PASS** (was FAIL)
+Budget-bounded per-pillar queries verified against fixtures captured live. `"fine"` deliberately
+excluded from the term set as catastrophically ambiguous — it was in the GDELT bundle.
+
+### 5. yfinance sustainability isolation — still **vacuous**
+`Ticker.sustainability` returns HTTP 404 for both tickers, so there is no score to isolate.
+Unchanged and not attributable to the source switch.
+
+**Summary: 6 pass, 0 fail, 1 vacuous.** Phase 1's goal — free data flows into raw_documents
+reliably and idempotently — is now true.

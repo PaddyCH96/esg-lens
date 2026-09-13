@@ -44,7 +44,7 @@ class RawDocument:
 
     def __post_init__(self) -> None:
         # Validate CHECK constraints
-        if self.source not in ("gdelt", "edgar", "yfinance", "newsapi"):
+        if self.source not in ("gdelt", "edgar", "yfinance", "newsapi", "rss"):
             raise ValueError(f"source must be gdelt|edgar|yfinance|newsapi, got {self.source!r}")
         if self.doc_type not in ("news", "filing_section", "press_release"):
             raise ValueError(f"doc_type must be news|filing_section|press_release, got {self.doc_type!r}")

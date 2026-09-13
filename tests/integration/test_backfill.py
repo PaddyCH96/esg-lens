@@ -111,7 +111,9 @@ async def test_backfill_idempotent_second_run_adds_zero_rows(db_conn, gdelt_samp
         cur = db_conn.execute("SELECT source, status FROM collection_runs WHERE ticker = ?", ("AAPL",))
         rows = cur.fetchall()
         sources = {r["source"] for r in rows}
-        assert "gdelt" in sources
+        # RSS is the primary news source as of 2026-09-14; GDELT is opt-in behind
+        # ESG_ENABLE_GDELT=1 because its DOC API refuses this IP.
+        assert "rss" in sources
         assert "edgar" in sources
         for r in rows:
             assert r["status"] in ("ok", "failed", "cached", "partial")

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import json
 import re
 import sqlite3
@@ -20,6 +21,7 @@ import structlog
 
 from esg_lens.collectors.edgar import EdgarCollector
 from esg_lens.collectors.gdelt import GdeltCollector
+from esg_lens.collectors.rss import RssCollector
 from esg_lens.collectors.yfinance_meta import YFinanceMetadataProvider
 from esg_lens.db.engine import get_connection, init_db
 from esg_lens.db.repositories import CompanyRepo, DocumentRepo
@@ -101,8 +103,12 @@ async def backfill_tickers(
                 log.error("fallback_company_failed", ticker=ticker, error=str(e))
                 continue
 
-        # Loop collectors GdeltCollector EdgarCollector via safe_fetch
-        collectors = [GdeltCollector(), EdgarCollector()]
+        # RSS is the primary news source as of 2026-09-14. GDELT's collector still works against
+        # fixtures but its DOC API refuses this IP, so it is opt-in via ESG_ENABLE_GDELT=1 rather
+        # than deleted — the code is sound and the block may not be permanent.
+        collectors: list = [RssCollector(), EdgarCollector()]
+        if os.environ.get("ESG_ENABLE_GDELT") == "1":
+            collectors.insert(0, GdeltCollector())
         for collector in collectors:
             if collector.source in tripped:
                 log.warning(

@@ -50,6 +50,11 @@ rate_limits:
   # (sustained 429s that killed every GDELT collection). 0.2 req/s == one per 5 seconds.
   api.gdeltproject.org: 0.2
   gdelt: 0.2
+  # Self-imposed. Google News RSS is undocumented and publishes no rate limit; 0.5/s is a
+  # courtesy ceiling, not an instruction we were given. Being throttled off GDELT for 8+ days
+  # is the cost of finding a real limit the hard way.
+  news.google.com: 0.5
+  feeds.finance.yahoo.com: 1.0
 
 # Cache TTL in hours
 cache_ttl_hours: 24

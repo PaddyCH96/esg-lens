@@ -65,9 +65,11 @@ CREATE INDEX IF NOT EXISTS idx_aliases_alias ON company_aliases(alias);
 CREATE TABLE IF NOT EXISTS raw_documents (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     ticker         TEXT NOT NULL REFERENCES companies(ticker) ON DELETE CASCADE,
-    -- Keep in sync with the API `sources` enum in api_design.md §1. Add 'rss' only
-    -- alongside an actual RSS collector; research_notes.md §2.4 lists it as unevaluated.
-    source         TEXT NOT NULL CHECK (source IN ('gdelt','edgar','yfinance','newsapi')),
+    -- Keep in sync with the API `sources` enum in api_design.md §1.
+    -- 'rss' was added 2026-09-14 when RssCollector replaced GDELT as the primary news source
+    -- (GDELT's DOC API refused this IP for 8+ days). It was deliberately absent before that:
+    -- a CHECK value with no collector behind it is a lie about capability.
+    source         TEXT NOT NULL CHECK (source IN ('gdelt','edgar','yfinance','newsapi','rss')),
     doc_type       TEXT NOT NULL CHECK (doc_type IN ('news','filing_section','press_release')),
     external_id    TEXT,                               -- GDELT doc id / EDGAR accession no.
     url            TEXT,
