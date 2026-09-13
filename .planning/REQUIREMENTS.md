@@ -88,13 +88,21 @@ category names the intel requirement it expands.
       `exclusion_reason='entity_mismatch'`
 - [ ] **NLP-04**: ESG classification with `finbert-esg-9-categories`, batched at `batch_size=16`,
       returning `(category, probability)`; `Non-ESG` or `prob < tau (0.60)` is excluded
+      *(Amended 2026-09-14: `tau` is now per-doc-type — `news` 0.45, `filing_section` 0.60,
+      `press_release` 0.45, resolved from `config/scoring.yaml`. See D-2-01.)*
 - [ ] **NLP-05**: Sentiment with `ProsusAI/finbert`, batched, returning `P(pos) − P(neg)` — used as one
       feature, never as ESG polarity on its own
 - [ ] **NLP-06**: Controversy severity 0–3 via spaCy `PhraseMatcher` over lemmas from the YAML lexicon,
       with the negation guard (`cleared of`, `dismissed`, `settled without`, `dropped`) demoting by 1;
+      *(Amended 2026-09-14: bare `dropped` removed — it lemmatises to `drop` and negated
+      "Stock Drop" headlines; replaced by the constrained multi-token forms in
+      `config/controversy_lexicon.yaml` v`lex@2026-09b`. See 02-RESEARCH.md Pitfall 2.)*
       **matched terms are always stored** as the audit trail
 - [ ] **NLP-07**: Pipeline writes one `esg_signals` row per document including all four persisted weights,
       and skips documents that already have a row for the current `model_version`
+      *(Amended 2026-09-14: FIVE persisted weights, not four — `weight_source`, `weight_recency`,
+      `weight_category`, `weight_evidence`, `weight_total`, matching `src/esg_lens/db/schema.sql`.
+      The "four" was a miscount at authoring time; the schema has carried five since Phase 0.)*
 - [ ] **NLP-08**: Documents failing any gate are stored with `included=false` and an `exclusion_reason` —
       never silently dropped
 

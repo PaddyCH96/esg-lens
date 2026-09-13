@@ -96,6 +96,7 @@ excluded one with a stated reason — fast enough to run on a laptop CPU.
   2. Models load exactly once per process — a test asserts the loader is not called inside the batch loop
   3. Each gate is unit-tested with stub models, asserting wiring rather than model accuracy: entity
      mismatch, `Non-ESG`, and `prob < 0.60` each produce the correct `exclusion_reason`
+     *(Amended 2026-09-14: `tau` is now per-doc-type — `news` 0.45, `filing_section` 0.60. See D-2-01.)*
   4. Rejected documents are still persisted with `included=false` and an `exclusion_reason` — nothing is
      silently dropped
   5. Every controversy hit stores its matched lexicon terms, and a negated phrase ("cleared of ...")
