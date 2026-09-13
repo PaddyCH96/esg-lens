@@ -33,9 +33,15 @@ open questions are all about correctness on real text.
 ### D-2-01: Per-doc-type relevance threshold
 `tau_news = 0.45`, `tau_filing_section = 0.60`. Both in `config/scoring.yaml` per D-015.
 
-**Evidence:** at a uniform `tau=0.60`, 8 of 50 real headlines fall below threshold, including
-`Lawsuit Against Apple To Remain In State Court` (0.45) and
-`OpenAI seeks dismissal of Apple's trade secrets lawsuit` (0.48) — both genuinely ESG-relevant.
+**Evidence:** at a uniform `tau=0.60`, 8 of 50 real headlines fell below threshold, two of them
+genuine ESG lawsuits scoring 0.45 and 0.48.
+
+> ⚠ **Do not quote those two titles as fixture landmarks.** They came from the AAPL corpus as it
+> stood on 2026-09-13. That corpus was destroyed by a smoke test and re-collected on 2026-09-14,
+> and RSS returns different articles each time — `Lawsuit Against Apple To Remain In State Court`
+> no longer exists in `data/esg_lens.db` (verified: 0 rows). The *measurement* stands; the
+> *specific titles* do not. Any fixture landmark must be re-verified against the live DB, which
+> is exactly why 02-01's export script asserts each landmark is present.
 
 **Rationale:** 0.60 was chosen in `scoring_methodology.md` §5 for the register FinBERT-ESG was
 trained on — corporate-report *sentences*. Headlines are shorter and out-of-domain, so softmax
