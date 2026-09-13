@@ -104,6 +104,11 @@ CREATE TABLE IF NOT EXISTS esg_signals (
     exclusion_reason TEXT CHECK (exclusion_reason IN
                        (NULL,'entity_mismatch','not_esg_relevant','too_old',
                         'low_confidence','duplicate','unsupported_language')),
+    -- id of the document retained from this near-duplicate cluster (D-2-02); NULL unless
+    -- exclusion_reason='duplicate'. A real FK, not a bare integer: it is a genuine relationship
+    -- between two raw_documents rows, and a product whose value proposition is an audit trail
+    -- cannot afford to hide one inside the untyped entities_json blob.
+    duplicate_of    INTEGER REFERENCES raw_documents(id),
 
     -- Classification
     pillar          TEXT CHECK (pillar IN (NULL,'E','S','G')),
