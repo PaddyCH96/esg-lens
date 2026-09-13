@@ -131,12 +131,14 @@ async def test_backfill_idempotent_second_run_adds_zero_rows(db_conn, gdelt_samp
 
 @respx.mock
 @pytest.mark.asyncio
-async def test_backfill_handles_collector_failure_without_raising(db_conn, tmp_path):
+async def test_backfill_handles_collector_failure_without_raising(db_conn, tmp_path, monkeypatch):
     """Forced collector failure via mocked exception still returns [] and writes collection_runs status failed without raising."""
     import esg_lens.config as cfg
 
-    orig = cfg.settings.CACHE_DIR
-    cfg.settings.CACHE_DIR = str(tmp_path / "cache_fail")
+    # monkeypatch, not bare assignment: this test previously set CACHE_DIR and never restored it,
+    # so every test running after it saw a tmp_path that no longer existed. That is invisible
+    # until something else legitimately reads the real cache — which nlp/alias_seed.py now does.
+    monkeypatch.setattr(cfg.settings, "CACHE_DIR", str(tmp_path / "cache_fail"))
 
     # Mock GDELT to simulate failure by making httpx raise? Instead patch GdeltCollector.fetch to raise
     from esg_lens.collectors.gdelt import GdeltCollector
