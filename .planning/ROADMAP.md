@@ -104,12 +104,15 @@ excluded one with a stated reason — fast enough to run on a laptop CPU.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: `nlp/registry.py` lazy process-wide singletons wired to FastAPI lifespan; `nlp/clean.py`
-      normalisation, spaCy sentence split, near-duplicate detection
-- [ ] 02-02: `nlp/entity.py` entity gate (NER + alias fuzzy/substring), `nlp/classify.py` batched
-      FinBERT-ESG with `tau=0.60`, `nlp/sentiment.py` batched `P(pos) − P(neg)`
-- [ ] 02-03: `nlp/controversy.py` PhraseMatcher over lemmas with the negation guard and matched-term
-      storage; `nlp/pipeline.py` writing `esg_signals` with all four weights and `model_version` skip logic
+- [ ] 02-01-PLAN.md — Config surface (per-doc-type `tau`, `nlp` block, lexicon `lex@2026-09b`),
+      RSS `_rss_feed` provenance + backfill, `nlp/registry.py` singletons, real-corpus fixture and
+      stub harness, `nlp/clean.py` normalisation / sentence split / near-duplicate collapse
+- [ ] 02-02-PLAN.md — EDGAR-cached alias seeding, `nlp/entity.py` per-feed trust gate that fails
+      open loudly, `nlp/classify.py` batched FinBERT-ESG with per-doc-type `tau` and filing-section
+      aggregation, `nlp/sentiment.py` batched `P(pos) − P(neg)`
+- [ ] 02-03-PLAN.md — `nlp/controversy.py` lemma PhraseMatcher with the lowercasing fix, symmetric
+      negation guard and matched-term storage; `esg_signals.duplicate_of` column; the three
+      `scoring/weights.py` arithmetic functions; `nlp/pipeline.py` writing `esg_signals`
 
 ### Phase 3: Scoring Engine
 **Goal**: Signals become defensible pillar and composite scores that reproduce the published worked
