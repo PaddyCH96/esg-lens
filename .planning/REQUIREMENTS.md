@@ -47,21 +47,34 @@ category names the intel requirement it expands.
 ### Collectors
 *Expands `REQ-collectors` — source: `handoff_to_backend.md` Phase 1; `architecture.md` §5.1; `research_notes.md` §2*
 
-- [ ] **COLL-01**: Shared `httpx` client with a configurable User-Agent (EDGAR mandates a contact email),
-      per-host token-bucket rate limiting (EDGAR 10/s, GDELT 1/s), `tenacity` exponential backoff on
+- [x] **COLL-01**: Shared `httpx` client with a configurable User-Agent (EDGAR mandates a contact email),
+      per-host token-bucket rate limiting from `config/sources.yaml` (EDGAR 10/s, GDELT 0.2/s,
+      news.google.com 0.5/s, feeds.finance.yahoo.com 1.0/s), `tenacity` exponential backoff on
       429/5xx, and a `hishel` disk cache at 24h TTL bypassed when `force_refresh=True`
-- [ ] **COLL-02**: `Collector` ABC with `fetch(ticker, since) -> list[RawDocument]`. Collectors **never
+      *(Amended 2026-09-14: GDELT was 1/s; its own 429 body states one request per 5 seconds.)*
+- [x] **COLL-02**: `Collector` ABC with `fetch(ticker, since) -> list[RawDocument]`. Collectors **never
       raise** — they catch, log, write a `collection_runs` row, and return `[]`
-- [ ] **COLL-03**: GDELT collector against DOC 2.1 `mode=artlist&format=json`, querying an alias OR-group
-      plus an ESG keyword bundle, normalising `domain`, parsing `seendate`, computing `content_hash`
-- [ ] **COLL-04**: EDGAR collector resolving ticker→CIK via cached `company_tickers.json` (no scraping),
+- [x] **COLL-03**: **RSS news collector** (primary news source) over Google News search RSS
+      (queryable, `when:Nd`) and Yahoo per-ticker RSS (entity-guaranteed), parsing the publisher
+      domain from `<source url>` (**not** `<link>`, which is a Google redirect), stripping the
+      `" - Publisher"` title suffix, parsing RFC-822 `pubDate`, and computing `content_hash`.
+      *(Amended 2026-09-14. Originally specified a GDELT DOC 2.1 collector. GDELT's DOC API refused
+      this IP for 8+ days while its static host served normally; see
+      `.planning/phases/01c-rss-primary/01c-DECISION.md`. The GDELT collector is retained and
+      functional behind `ESG_ENABLE_GDELT=1`, but is no longer the primary news source. Measured on
+      the same two tickers: GDELT 0 documents in 3m23s, RSS 227 documents in 17s.)*
+- [x] **COLL-04**: EDGAR collector resolving ticker→CIK via cached `company_tickers.json` (no scraping),
       pulling recent 10-K/8-K/DEF 14A, section-splitting the 10-K and keeping **only Item 1 and Item 1A**,
       one `raw_documents` row per section
-- [ ] **COLL-05**: yfinance metadata provider populating `companies` and seeding `company_aliases`
+- [~] **COLL-05**: yfinance metadata provider populating `companies` and seeding `company_aliases`
       (legal name, common name, `Inc.`/`Corp.`/`plc` variants); any `sustainability` score is written to
       `external_esg_score` **only**, never used as a scoring input
-- [ ] **COLL-06**: NewsAPI collector implemented but shipped with `enabled: false` in config
-- [ ] **COLL-07**: Deduplication on `content_hash` — re-running a backfill adds zero rows
+      *(PARTIAL 2026-09-14: metadata and alias seeding work and are verified. The isolation clause is
+      vacuously satisfied — `Ticker.sustainability` returns HTTP 404 for both test tickers, so there
+      is no score to isolate. Isolation confirmed by inspection only. Re-verify if Yahoo restores
+      the endpoint.)*
+- [x] **COLL-06**: NewsAPI collector implemented but shipped with `enabled: false` in config
+- [x] **COLL-07**: Deduplication on `content_hash` — re-running a backfill adds zero rows
 
 ### NLP Pipeline
 *Expands `REQ-nlp-pipeline` — source: `handoff_to_backend.md` Phase 2; `architecture.md` §5.2; `scoring_methodology.md` §1*
@@ -234,13 +247,13 @@ order and the numbering used in commit messages (`[P0]`..`[P5]`).
 | DATA-02 | Phase 0 | Pending |
 | DATA-03 | Phase 0 | Pending |
 | DATA-04 | Phase 0 | Pending |
-| COLL-01 | Phase 1 | Pending |
-| COLL-02 | Phase 1 | Pending |
-| COLL-03 | Phase 1 | Pending |
-| COLL-04 | Phase 1 | Pending |
-| COLL-05 | Phase 1 | Pending |
-| COLL-06 | Phase 1 | Pending |
-| COLL-07 | Phase 1 | Pending |
+| COLL-01 | Phase 1 | Complete (2026-09-14) |
+| COLL-02 | Phase 1 | Complete (2026-09-14) |
+| COLL-03 | Phase 1 / 1c | Complete — **amended to RSS**, see 01c-DECISION.md |
+| COLL-04 | Phase 1 | Complete (2026-09-14) |
+| COLL-05 | Phase 1 | **Partial** — isolation clause vacuous (yfinance 404) |
+| COLL-06 | Phase 1 | Complete (2026-09-14) |
+| COLL-07 | Phase 1 | Complete (2026-09-14) |
 | NLP-01 | Phase 2 | Pending |
 | NLP-02 | Phase 2 | Pending |
 | NLP-03 | Phase 2 | Pending |

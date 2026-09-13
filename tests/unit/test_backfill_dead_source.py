@@ -33,28 +33,10 @@ def _backfill_module():
 
 
 def test_dead_source_detection_is_present():
-    """The result dict must carry per_source counts and a dead_sources list."""
-    src = (Path(__file__).resolve().parents[2] / "scripts" / "backfill.py").read_text()
-    assert "dead_sources" in src, "backfill must identify sources that collected nothing"
-    assert "per_source" in src, "backfill must report a per-source breakdown"
-    assert "SystemExit(2)" in src, "a dead source must produce a non-zero exit"
-
-
-def test_zero_documents_from_a_source_is_flagged():
-    """The core rule: 0 documents across all tickers => that source is dead."""
-    per_source = {"gdelt": 0, "edgar": 15}
-    dead = sorted(k for k, v in per_source.items() if v == 0)
-    assert dead == ["gdelt"]
-
-    # The exact Phase 1 shape: a run that looks successful in aggregate.
-    total_fetched = sum(per_source.values())
-    assert total_fetched == 15, "aggregate totals look healthy — which is precisely the trap"
-    assert dead, "a healthy-looking total must not suppress the dead-source signal"
-
-
-def test_all_sources_alive_is_not_flagged():
-    per_source = {"gdelt": 7, "edgar": 15}
-    assert not [k for k, v in per_source.items() if v == 0]
+    """Structural check only — the behaviour is proven by the live-loop tests below."""
+    mod = _backfill_module()
+    assert hasattr(mod, "CIRCUIT_BREAKER_THRESHOLD")
+    assert 1 <= mod.CIRCUIT_BREAKER_THRESHOLD <= 5, "threshold should trip early, not eventually"
 
 
 def test_exit_code_is_non_zero_when_a_source_is_dead(monkeypatch, capsys):
@@ -88,63 +70,105 @@ def test_exit_code_is_non_zero_when_a_source_is_dead(monkeypatch, capsys):
 
 
 # ---------------------------------------------------------------------------
-# Circuit breaker (G-3) — observed 2026-09-14
+# Circuit breaker (G-3) — driven through the REAL backfill loop.
+#
+# An earlier draft of these tests reimplemented the loop's bookkeeping inside the test and never
+# called backfill_tickers, and two others asserted that strings appeared in backfill.py. Both
+# pass whether or not the code works (Phase 1 gap G-4: grep-as-coverage). These drive the actual
+# orchestrator with stub collectors instead.
 # ---------------------------------------------------------------------------
 
 
-def test_circuit_breaker_threshold_is_defined():
-    """A source refusing us refuses every ticker, and each attempt burns the full
-    COLLECTOR_TIMEOUT_SECONDS. Measured: a dead GDELT cost 120s per ticker, so a 25-ticker
-    portfolio would spend ~50 minutes waiting on a source already known dead after the first."""
+class _StubCollector:
+    """Minimal Collector stand-in: records calls, returns a fixed document count."""
+
+    def __init__(self, source: str, per_call_docs: int) -> None:
+        self.source = source
+        self.per_call_docs = per_call_docs
+        self.tickers_seen: list[str] = []
+        self.last_run_id = None
+
+    async def safe_fetch(self, conn, ticker, since=None, *, job_id=None, force_refresh=False):
+        self.tickers_seen.append(ticker)
+        from esg_lens.collectors.base import RawDocument, content_hash
+
+        out = []
+        for i in range(self.per_call_docs):
+            title = f"{ticker} {self.source} doc {i}"
+            out.append(
+                RawDocument(
+                    ticker=ticker, source="rss", doc_type="news", title=title,
+                    content_hash=content_hash(title, f"{ticker}-{self.source}-{i}"),
+                )
+            )
+        return out
+
+    def update_run_new_count(self, conn, n_new):
+        return None
+
+
+def _run_backfill(mod, monkeypatch, db_conn, collectors, tickers):
+    """Drive the real backfill_tickers with stub collectors and no yfinance."""
+    import asyncio
+
+    async def _fake_ensure(ticker, conn, force_refresh):
+        conn.execute(
+            "INSERT OR IGNORE INTO companies (ticker, name, fetched_at) VALUES (?,?,?)",
+            (ticker, ticker, ""),
+        )
+        conn.commit()
+        return True
+
+    # raising=True: a renamed seam must fail loudly, not silently no-op (the lesson from the
+    # earlier run_backfill/backfill_tickers mispatch that hit live SEC EDGAR for 204 seconds).
+    monkeypatch.setattr(mod, "_ensure_company_row", _fake_ensure)
+    monkeypatch.setattr(mod, "build_collectors", lambda: collectors)
+    return asyncio.run(mod.backfill_tickers(tickers, conn=db_conn))
+
+
+def test_dead_source_is_skipped_after_threshold(monkeypatch, db_conn):
+    """THE behaviour: a source returning nothing must stop being called.
+
+    Measured 2026-09-14: a dead GDELT cost 120s per ticker, so 25 tickers would spend ~50 minutes
+    waiting on a source already known dead after the first.
+    """
     mod = _backfill_module()
-    assert hasattr(mod, "CIRCUIT_BREAKER_THRESHOLD")
-    assert 1 <= mod.CIRCUIT_BREAKER_THRESHOLD <= 5, "threshold should trip early, not eventually"
+    dead = _StubCollector("deadsource", per_call_docs=0)
+    alive = _StubCollector("edgar", per_call_docs=3)
+
+    result = _run_backfill(mod, monkeypatch, db_conn, [dead, alive], ["AAPL", "XOM", "MSFT"])
+
+    assert len(dead.tickers_seen) == mod.CIRCUIT_BREAKER_THRESHOLD, (
+        f"dead source was called {len(dead.tickers_seen)}x for 3 tickers; "
+        f"breaker should stop it after {mod.CIRCUIT_BREAKER_THRESHOLD}"
+    )
+    assert len(alive.tickers_seen) == 3, "a healthy source must keep running"
+    assert "deadsource" in (result.get("dead_sources") or [])
 
 
-def test_circuit_breaker_logic_trips_after_threshold():
-    """Simulates the loop's bookkeeping: N consecutive empty results trips the source."""
+def test_healthy_sources_never_trip(monkeypatch, db_conn):
     mod = _backfill_module()
-    threshold = mod.CIRCUIT_BREAKER_THRESHOLD
+    a = _StubCollector("rssfeed", per_call_docs=2)
+    b = _StubCollector("edgar", per_call_docs=3)
 
-    consecutive: dict[str, int] = {}
-    tripped: set[str] = set()
+    result = _run_backfill(mod, monkeypatch, db_conn, [a, b], ["AAPL", "XOM", "MSFT"])
 
-    def record(source: str, n_fetched: int) -> None:
-        if n_fetched == 0:
-            consecutive[source] = consecutive.get(source, 0) + 1
-            if consecutive[source] >= threshold:
-                tripped.add(source)
-        else:
-            consecutive[source] = 0
-
-    for _ in range(threshold):
-        record("gdelt", 0)
-        record("edgar", 12)
-
-    assert "gdelt" in tripped, "a repeatedly empty source must trip the breaker"
-    assert "edgar" not in tripped, "a healthy source must never trip"
+    assert len(a.tickers_seen) == 3 and len(b.tickers_seen) == 3
+    assert not result.get("dead_sources")
 
 
-def test_a_recovering_source_resets_the_counter():
-    """One empty result then a good one must not accumulate toward tripping."""
+def test_recovering_source_resets_the_counter(monkeypatch, db_conn):
+    """One empty result followed by a good one must not accumulate toward tripping."""
     mod = _backfill_module()
-    consecutive: dict[str, int] = {}
-    tripped: set[str] = set()
 
-    for n in (0, 5, 0):
-        source = "gdelt"
-        if n == 0:
-            consecutive[source] = consecutive.get(source, 0) + 1
-            if consecutive[source] >= mod.CIRCUIT_BREAKER_THRESHOLD:
-                tripped.add(source)
-        else:
-            consecutive[source] = 0
+    class _Flaky(_StubCollector):
+        async def safe_fetch(self, conn, ticker, since=None, *, job_id=None, force_refresh=False):
+            self.per_call_docs = 0 if len(self.tickers_seen) % 2 == 0 else 2
+            return await super().safe_fetch(conn, ticker, since, job_id=job_id,
+                                            force_refresh=force_refresh)
 
-    assert "gdelt" not in tripped, "intermittent empties must not trip the breaker"
+    flaky = _Flaky("flaky", per_call_docs=0)
+    result = _run_backfill(mod, monkeypatch, db_conn, [flaky], ["AAPL", "XOM", "MSFT", "GOOG"])
 
-
-def test_circuit_breaker_is_wired_into_the_collector_loop():
-    src = (Path(__file__).resolve().parents[2] / "scripts" / "backfill.py").read_text()
-    assert "collector_circuit_tripped" in src
-    assert "collector_circuit_open_skipped" in src
-    assert "if collector.source in tripped:" in src, "breaker must short-circuit the loop"
+    assert len(flaky.tickers_seen) == 4, "intermittent empties must not trip the breaker"
+    assert not result.get("dead_sources"), "a source that keeps producing is not dead"

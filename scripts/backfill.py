@@ -34,6 +34,45 @@ CIRCUIT_BREAKER_THRESHOLD = 2
 TICKER_RE = re.compile(r"^[A-Z0-9.\-]{1,10}$")
 
 
+def build_collectors() -> list:
+    """Construct the collector chain. A seam: tests inject stubs by patching this.
+
+    RSS is the primary news source as of 2026-09-14. GDELT's collector still works against
+    fixtures but its DOC API refuses this IP, so it is opt-in via ESG_ENABLE_GDELT=1 rather than
+    deleted — the code is sound and the block may not be permanent.
+    """
+    collectors: list = [RssCollector(), EdgarCollector()]
+    if os.environ.get("ESG_ENABLE_GDELT") == "1":
+        collectors.insert(0, GdeltCollector())
+    return collectors
+
+
+async def _ensure_company_row(ticker: str, conn, force_refresh: bool) -> bool:
+    """Populate companies/company_aliases via yfinance, with a minimal fallback row.
+
+    raw_documents has an FK to companies, so a missing row would fail every insert. Returns
+    False when even the fallback could not be created, meaning the ticker must be skipped.
+    """
+    yprovider = YFinanceMetadataProvider()
+    try:
+        await yprovider.fetch_yfinance_metadata(ticker, conn, force_refresh=force_refresh)
+    except Exception as e:
+        log.error("yfinance_backfill_failed", ticker=ticker, error=str(e))
+
+    if conn.execute("SELECT ticker FROM companies WHERE ticker = ?", (ticker,)).fetchone():
+        return True
+    try:
+        import datetime
+
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        CompanyRepo(conn).upsert(ticker, ticker, fetched_at=now, updated_at=now)
+        log.info("backfill_fallback_company_created", ticker=ticker)
+        return True
+    except Exception as e:
+        log.error("fallback_company_failed", ticker=ticker, error=str(e))
+        return False
+
+
 async def backfill_tickers(
     tickers: list[str],
     conn: sqlite3.Connection | None = None,
@@ -82,33 +121,10 @@ async def backfill_tickers(
             log.error("invalid_ticker", ticker=ticker)
             continue
 
-        # Ensure companies row exists via yfinance provider first
-        yprovider = YFinanceMetadataProvider()
-        try:
-            await yprovider.fetch_yfinance_metadata(ticker, conn, force_refresh=force_refresh)
-        except Exception as e:
-            log.error("yfinance_backfill_failed", ticker=ticker, error=str(e))
+        if not await _ensure_company_row(ticker, conn, force_refresh):
+            continue
 
-        # Fallback minimal companies row if still missing (FK for raw_documents)
-        cur = conn.execute("SELECT ticker FROM companies WHERE ticker = ?", (ticker,))
-        if cur.fetchone() is None:
-            try:
-                repo = CompanyRepo(conn)
-                import datetime
-
-                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                repo.upsert(ticker, ticker, fetched_at=now, updated_at=now)
-                log.info("backfill_fallback_company_created", ticker=ticker)
-            except Exception as e:
-                log.error("fallback_company_failed", ticker=ticker, error=str(e))
-                continue
-
-        # RSS is the primary news source as of 2026-09-14. GDELT's collector still works against
-        # fixtures but its DOC API refuses this IP, so it is opt-in via ESG_ENABLE_GDELT=1 rather
-        # than deleted — the code is sound and the block may not be permanent.
-        collectors: list = [RssCollector(), EdgarCollector()]
-        if os.environ.get("ESG_ENABLE_GDELT") == "1":
-            collectors.insert(0, GdeltCollector())
+        collectors = build_collectors()
         for collector in collectors:
             if collector.source in tripped:
                 log.warning(

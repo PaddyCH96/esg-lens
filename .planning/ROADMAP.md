@@ -63,15 +63,18 @@ deduplicated, and never able to crash the process.
 **Depends on**: Phase 0
 **Requirements**: COLL-01, COLL-02, COLL-03, COLL-04, COLL-05, COLL-06, COLL-07
 **Success Criteria** (what must be TRUE):
-  1. `scripts/backfill.py --tickers AAPL,XOM` populates `raw_documents` with GDELT news and EDGAR
+  1. `scripts/backfill.py --tickers AAPL,XOM` populates `raw_documents` with **RSS news** and EDGAR
      filing sections, and populates `companies` plus `company_aliases` from yfinance metadata
+     *(amended 2026-09-14: was "GDELT news" — see 01c-DECISION.md. Measured: 227 RSS + 15 EDGAR.)*
   2. Re-running the same backfill adds **zero** new rows — `content_hash` deduplication works
   3. A forced collector failure produces a `collection_runs` row and an empty list, never an exception
      escaping to the caller
   4. Integration tests pass against recorded fixtures with `respx`, making no live network calls
   5. Every outbound EDGAR request carries a User-Agent containing a contact email, and observed request
-     rates stay within 10/s for EDGAR and 1/s for GDELT
+     rates stay within the per-host budgets in `config/sources.yaml` — EDGAR 10/s, GDELT 0.2/s,
+     news.google.com 0.5/s *(amended: GDELT's own 429 body states one request per 5 seconds)*
   6. Any yfinance sustainability score lands in `external_esg_score` and nowhere else
+     *(vacuous as of 2026-09-14: yfinance returns 404, so there is no score to isolate)*
 **Plans**: 3 plans
 
 Plans:
