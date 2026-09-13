@@ -90,10 +90,17 @@ scoring:
 # (Phase 0 success criterion 4).
 nlp:
   batch_size: 16                     # HF pipeline batch size — authoritative for inference
-  near_duplicate_jaccard: 0.70       # token-set Jaccard over normalised titles (D-2-02).
-                                     # Tuned on the real MSFT corpus: 7 clusters / 12 docs at
-                                     # 100% precision. Lower values start merging distinct
-                                     # stories (a genuinely distinct MSFT pair scores 0.46).
+  near_duplicate_jaccard: 0.70       # token-set Jaccard over title tokens (D-2-02). The
+                                     # tokenizer is pinned in nlp/clean.py:content_tokens —
+                                     # re.findall(r"[a-z0-9]+", title.lower()), no stemming,
+                                     # no stopword removal — because the cluster count is
+                                     # tokenizer-dependent and three measurements of the same
+                                     # corpus disagreed until it was pinned.
+                                     # Measured 2026-09-14 on the real MSFT corpus at that
+                                     # tokenizer: 8 clusters covering 19 documents, 100%
+                                     # precision. Lower values start merging distinct stories
+                                     # (a genuinely distinct MSFT pair scores 0.41-0.50, so the
+                                     # bands very nearly touch — do not lower this).
   max_sentences_per_section: 400     # DoS guard on a pathological 10-K (T-02-04)
   min_sentence_chars: 25             # below this is EDGAR table furniture, not a sentence
   min_alpha_tokens_per_sentence: 4   # ditto — drops "| 1,234 | 5,678 |" rows
