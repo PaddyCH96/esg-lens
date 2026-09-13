@@ -226,7 +226,7 @@ Phases execute in numeric order: 0 → 1 → **1b** → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 0. Scaffold | 2/2 | ✅ Complete | 2026-09-03 (`d8902dc`) |
 | 1. Collectors | 3/3 | 🔴 **FAILED verification** — GDELT collects 0 docs | - |
-| 1b. GDELT Rework | 3/4 | 🟡 01b-04 blocked on GDELT IP cooldown | - |
+| 1b. GDELT Rework | 4/4 code | 🔴 Code-complete, **cannot close** — GDELT refuses this IP | - |
 | 2. NLP Pipeline | 0/3 | Not started | - |
 | 3. Scoring Engine | 0/3 | Not started (acceptance test written) | - |
 | 4. API & Jobs | 0/5 | Not started | - |

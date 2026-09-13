@@ -85,3 +85,66 @@ def test_exit_code_is_non_zero_when_a_source_is_dead(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "by source" in out, "operator needs the per-source breakdown to see which died"
     assert "gdelt" in out
+
+
+# ---------------------------------------------------------------------------
+# Circuit breaker (G-3) — observed 2026-09-14
+# ---------------------------------------------------------------------------
+
+
+def test_circuit_breaker_threshold_is_defined():
+    """A source refusing us refuses every ticker, and each attempt burns the full
+    COLLECTOR_TIMEOUT_SECONDS. Measured: a dead GDELT cost 120s per ticker, so a 25-ticker
+    portfolio would spend ~50 minutes waiting on a source already known dead after the first."""
+    mod = _backfill_module()
+    assert hasattr(mod, "CIRCUIT_BREAKER_THRESHOLD")
+    assert 1 <= mod.CIRCUIT_BREAKER_THRESHOLD <= 5, "threshold should trip early, not eventually"
+
+
+def test_circuit_breaker_logic_trips_after_threshold():
+    """Simulates the loop's bookkeeping: N consecutive empty results trips the source."""
+    mod = _backfill_module()
+    threshold = mod.CIRCUIT_BREAKER_THRESHOLD
+
+    consecutive: dict[str, int] = {}
+    tripped: set[str] = set()
+
+    def record(source: str, n_fetched: int) -> None:
+        if n_fetched == 0:
+            consecutive[source] = consecutive.get(source, 0) + 1
+            if consecutive[source] >= threshold:
+                tripped.add(source)
+        else:
+            consecutive[source] = 0
+
+    for _ in range(threshold):
+        record("gdelt", 0)
+        record("edgar", 12)
+
+    assert "gdelt" in tripped, "a repeatedly empty source must trip the breaker"
+    assert "edgar" not in tripped, "a healthy source must never trip"
+
+
+def test_a_recovering_source_resets_the_counter():
+    """One empty result then a good one must not accumulate toward tripping."""
+    mod = _backfill_module()
+    consecutive: dict[str, int] = {}
+    tripped: set[str] = set()
+
+    for n in (0, 5, 0):
+        source = "gdelt"
+        if n == 0:
+            consecutive[source] = consecutive.get(source, 0) + 1
+            if consecutive[source] >= mod.CIRCUIT_BREAKER_THRESHOLD:
+                tripped.add(source)
+        else:
+            consecutive[source] = 0
+
+    assert "gdelt" not in tripped, "intermittent empties must not trip the breaker"
+
+
+def test_circuit_breaker_is_wired_into_the_collector_loop():
+    src = (Path(__file__).resolve().parents[2] / "scripts" / "backfill.py").read_text()
+    assert "collector_circuit_tripped" in src
+    assert "collector_circuit_open_skipped" in src
+    assert "if collector.source in tripped:" in src, "breaker must short-circuit the loop"

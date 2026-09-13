@@ -26,6 +26,9 @@ from esg_lens.db.repositories import CompanyRepo, DocumentRepo
 
 log = structlog.get_logger(__name__)
 
+# Consecutive zero-document results from one source before it is skipped for the rest of a run.
+CIRCUIT_BREAKER_THRESHOLD = 2
+
 TICKER_RE = re.compile(r"^[A-Z0-9.\-]{1,10}$")
 
 
@@ -58,6 +61,13 @@ async def backfill_tickers(
     total_fetched = 0
     total_new = 0
     per_source: dict[str, int] = {}
+    # Circuit breaker (G-3). A source that is refusing us will refuse us for every ticker, and
+    # each attempt burns the full COLLECTOR_TIMEOUT_SECONDS budget. Observed 2026-09-14: a dead
+    # GDELT cost 120s per ticker, so a 25-ticker portfolio would spend ~50 minutes waiting on a
+    # source already known dead after the first one. After this many consecutive failures, stop
+    # trying that source for the remainder of the run.
+    consecutive_failures: dict[str, int] = {}
+    tripped: set[str] = set()
 
     # Validate and cap at 25 tickers per plan
     tickers = [t.strip().upper() for t in tickers if t.strip()]
@@ -94,6 +104,15 @@ async def backfill_tickers(
         # Loop collectors GdeltCollector EdgarCollector via safe_fetch
         collectors = [GdeltCollector(), EdgarCollector()]
         for collector in collectors:
+            if collector.source in tripped:
+                log.warning(
+                    "collector_circuit_open_skipped",
+                    ticker=ticker,
+                    source=collector.source,
+                    after_failures=CIRCUIT_BREAKER_THRESHOLD,
+                )
+                per_source.setdefault(collector.source, 0)
+                continue
             try:
                 docs = await collector.safe_fetch(conn, ticker, since, job_id=job_id, force_refresh=force_refresh)
             except Exception as e:
@@ -103,6 +122,20 @@ async def backfill_tickers(
             n_fetched = len(docs)
             total_fetched += n_fetched
             n_new = 0
+
+            # Trip the breaker on repeated empty results from a source.
+            if n_fetched == 0:
+                consecutive_failures[collector.source] = consecutive_failures.get(collector.source, 0) + 1
+                if consecutive_failures[collector.source] >= CIRCUIT_BREAKER_THRESHOLD:
+                    tripped.add(collector.source)
+                    log.error(
+                        "collector_circuit_tripped",
+                        source=collector.source,
+                        consecutive_failures=consecutive_failures[collector.source],
+                        remaining_tickers_skipped=True,
+                    )
+            else:
+                consecutive_failures[collector.source] = 0
 
             for doc in docs:
                 # content_hash already computed via base.content_hash; use DocumentRepo INSERT OR IGNORE on (ticker, content_hash)

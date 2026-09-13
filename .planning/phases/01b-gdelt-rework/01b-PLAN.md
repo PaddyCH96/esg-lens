@@ -185,3 +185,50 @@ requests in the suite.
 
 **01b-04 REMAINS.** Blocked on the GDELT cooldown. As of 2026-09-07 a 25-character query at
 11-second spacing still returns 429. Everything else is done and offline-verified.
+
+---
+
+## 01b-04 execution — 2026-09-14 (PARTIAL, externally blocked)
+
+**GDELT still refuses this IP after 7 days.** One request, per the stop condition: HTTP 429 on a
+short single-theme query — the exact shape 01b-02 produces. Diagnostic isolates the block:
+`data.gdeltproject.org` returns **HTTP 200** (the GKG file index served fine) while
+`api.gdeltproject.org` returns 429. So this is neither a network fault nor a GDELT-wide block on
+us; it is the DOC API rate-limiter rejecting this specific IP, and seven days is no longer a
+transient cooldown.
+
+Everything in 01b-04 that does not require DOC API documents was executed against live services:
+
+- [x] Cold-start backfill on AAPL,XOM — EDGAR path works, 15 documents, companies and aliases
+      populated, CIK persisted (AAPL `0000320193`, XOM `0002115436`).
+- [x] Re-run dedup (UAT 2) — **proven at DB level**: `AAPL|edgar|ok|12|0`. Twelve fetched, zero
+      inserted. Before the N1 fix this row read `12|12`.
+- [x] UAT 3 never-raise — held under real repeated GDELT failures; the run continued to EDGAR.
+- [x] UAT 4 — verified; behavioural rate-limit tests plus a real contact email in the UA.
+- [x] UAT 7 — NewsAPI stays off.
+- [ ] UAT 1 — **still FAILS.** GDELT contributes 0 documents.
+- [ ] UAT 6 — **cannot be verified live.** Queries are now correct in shape and length
+      (159-230 chars, verified against captured fixtures) but GDELT will not serve them.
+- [ ] UAT 5 — still vacuous; yfinance `sustainability` returns 404, so there is no score to isolate.
+
+### All 01b-03 fixes confirmed under real conditions, not just mocks
+
+    N1  AAPL|edgar|ok|12|0        n_new reports real inserts (was 12|12)
+    N2  gdelt status=failed       never the ok|0|0 that hid this failure
+    G-2 exit code 2               plus a per-source breakdown line
+    G-3 duration_ms=120001        deadline capped the stall instead of hanging
+
+### New finding and fix: circuit breaker
+
+The 120s deadline bounds a single fetch, but a dead source still cost 120s **per ticker** — a
+25-ticker portfolio would spend ~50 minutes waiting on a source already known dead after the
+first. Added a circuit breaker to `backfill.py`: after `CIRCUIT_BREAKER_THRESHOLD` (2) consecutive
+zero-document results, a source is skipped for the rest of the run. Verified live on AAPL,XOM,MSFT
+— MSFT has no `gdelt` row at all. A source that recovers resets its counter, so intermittent
+empties do not trip it.
+
+### Verdict
+
+**Phase 1b is code-complete. It cannot be closed.** The DoD requires GDELT to actually deliver
+documents, and that is now an external dependency this codebase cannot satisfy. Per this plan's
+own escalation rule, the next step is an architecture decision, not more patching.
