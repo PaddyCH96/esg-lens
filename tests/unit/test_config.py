@@ -7,7 +7,8 @@ def test_scoring_config_version_and_hash():
     from esg_lens.config import ScoringConfig, CONFIG_DIR
 
     cfg = ScoringConfig(config_dir=CONFIG_DIR)
-    assert cfg.version == "0.1.0"
+    # Bumped to 0.2.0 by Phase 2 plan 02-01 (per-doc-type tau, D-2-01, plus the nlp block).
+    assert cfg.version == "0.2.0"
     assert len(cfg.config_hash) == 64  # sha256 hex
     # stable
     cfg2 = ScoringConfig(config_dir=CONFIG_DIR)

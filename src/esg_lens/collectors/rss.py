@@ -22,6 +22,7 @@ responses are checked in under tests/fixtures/rss_*.xml.
 
 from __future__ import annotations
 
+import json
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -129,14 +130,34 @@ class RssCollector(Collector):
         return ticker
 
     # -- parsing ----------------------------------------------------------
-    def parse_feed(self, xml_text: str, ticker: str, pillar: str | None = None) -> list[RawDocument]:
-        """Parse an RSS body into RawDocuments. Malformed XML yields [] rather than raising."""
+    def parse_feed(
+        self,
+        xml_text: str,
+        ticker: str,
+        pillar: str | None = None,
+        feed_key: str | None = None,
+    ) -> list[RawDocument]:
+        """Parse an RSS body into RawDocuments. Malformed XML yields [] rather than raising.
+
+        `feed_key` names the originating feed in `config/rss_feeds.yaml` and is recorded in
+        `raw_json._rss_feed`. D-2-03 makes entity-gate trust a per-feed property, so without
+        this the gate has nothing to key on. `fetch` always passes it explicitly; when omitted
+        it is derived from `pillar` using the same rule as
+        scripts/migrate_rss_feed_provenance.py — only Google News requests carry a pillar.
+        """
         docs: list[RawDocument] = []
         try:
             root = ET.fromstring(xml_text)
         except ET.ParseError as e:
             log.warning("rss_parse_failed", ticker=ticker, error=str(e)[:200])
             return docs
+
+        if feed_key is None:
+            feed_key = "google_news" if pillar is not None else "yahoo_ticker"
+        # Always a dict, never NULL and never an f-string: a publisher-controlled pillar or feed
+        # key must not be able to break out of the JSON literal (T-02-01). `_rss_pillar` stays
+        # present-but-null for Yahoo so every RSS row has a uniform key set.
+        raw_json = json.dumps({"_rss_pillar": pillar, "_rss_feed": feed_key})
 
         for item in root.iter("item"):
             raw_title = _first(item, "title") or ""
@@ -167,7 +188,7 @@ class RssCollector(Collector):
                     external_id=external_id,
                     published_at=published,
                     content_hash=content_hash(title, external_id, link),
-                    raw_json=None if pillar is None else f'{{"_rss_pillar": "{pillar}"}}',
+                    raw_json=raw_json,
                 )
             )
         return docs
@@ -194,20 +215,21 @@ class RssCollector(Collector):
         attempted = 0
         failed = 0
 
-        requests: list[tuple[str, str | None]] = []
+        # (url, pillar, feed_key)
+        requests: list[tuple[str, str | None, str]] = []
 
         gn = feeds.get("google_news") or {}
         if gn.get("enabled"):
             lookback = int(gn.get("lookback_days", 90))
             for pillar, terms in pillar_terms.items():
                 query = build_pillar_query(company, list(terms), lookback, max_chars)
-                requests.append((gn["url"].format(query=quote_plus(query)), pillar))
+                requests.append((gn["url"].format(query=quote_plus(query)), pillar, "google_news"))
 
         yt = feeds.get("yahoo_ticker") or {}
         if yt.get("enabled"):
-            requests.append((yt["url"].format(ticker=ticker), None))
+            requests.append((yt["url"].format(ticker=ticker), None, "yahoo_ticker"))
 
-        for url, pillar in requests:
+        for url, pillar, feed_key in requests:
             attempted += 1
             try:
                 resp = await client.get(url, force_refresh=force_refresh)
@@ -227,7 +249,7 @@ class RssCollector(Collector):
                 )
                 continue
 
-            parsed = self.parse_feed(resp.text, ticker, pillar)
+            parsed = self.parse_feed(resp.text, ticker, pillar, feed_key=feed_key)
             if not parsed:
                 log.info("rss_feed_empty", ticker=ticker, pillar=pillar)
             for d in parsed:

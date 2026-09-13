@@ -25,6 +25,9 @@ feeds:
     url: "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
     lookback_days: 90
     max_items: 100
+    # D-2-03: query-matched only, so the provider asserts nothing about identity —
+    # "Apple the fruit" is possible. Full spaCy NER + alias match applies.
+    entity_gate: apply
 
   # SECONDARY. Entity-guaranteed: Yahoo tags these to the ticker itself, so no name
   # disambiguation is needed and "Apple the fruit" cannot appear. In exchange it is generic
@@ -34,6 +37,10 @@ feeds:
     kind: ticker         # one request per ticker
     url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
     max_items: 50
+    # D-2-03: Yahoo tags the feed to the ticker itself, so identity is asserted by the provider.
+    # Applying the gate here would reject real signal ("Q3 earnings beat expectations") over an
+    # identity question it already has the answer to.
+    entity_gate: skip
 
 # ---------------------------------------------------------------------------
 # Per-pillar ESG query terms.

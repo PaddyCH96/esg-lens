@@ -1,10 +1,18 @@
 # ESG Lens scoring configuration - versioned, hashed, stamped onto every esg_scores row
 # Source: docs/scoring_methodology.md §2, §3, §5, §6
 
-version: "0.1.0"
+version: "0.2.0"
 
 # ── Gates & thresholds ──────────────────────────────────────────────────
-tau: 0.60                        # FinBERT-ESG relevance threshold (§5)
+# FinBERT-ESG relevance threshold, per doc_type (D-2-01).
+# Headlines are short and out-of-domain for a model trained on corporate-report sentences, so
+# softmax confidence runs systematically lower for the same true relevance: at a uniform 0.60,
+# 8 of 50 real headlines fell below threshold, two of them genuine ESG lawsuits at 0.45/0.48.
+# Filing sections keep 0.60 — long-form relevant text genuinely does score higher.
+tau:
+  news: 0.45
+  filing_section: 0.60
+  press_release: 0.45
 min_evidence: 1.0               # Σ w_ev gate per pillar (§6.1)
 max_age_days: 730               # documents older than this are excluded (§5)
 pen_cap: 40                     # max controversy penalty per pillar (§6.1)
@@ -71,5 +79,28 @@ confidence_evidence_denominator: 10
 
 # ── Misc ────────────────────────────────────────────────────────────────
 scoring:
-  batch_size: 16                # HF pipeline batch size
-  model_version: "finbert-esg-9cat@v1|prosus-finbert@v1|lex@2026-09"
+  # NOT authoritative for NLP inference. `nlp.batch_size` below is what nlp/registry.py reads;
+  # this key is retained for Phase 3 scoring batches only. If they ever disagree, nlp wins for
+  # anything touching a transformer pipeline.
+  batch_size: 16
+  model_version: "finbert-esg-9cat@v1|prosus-finbert@v1|lex@2026-09b"
+
+# ── NLP pipeline (Phase 2) ─────────────────────────────────────────────
+# Every threshold the NLP pipeline uses lives here. A magic number in src/ is a bug
+# (Phase 0 success criterion 4).
+nlp:
+  batch_size: 16                     # HF pipeline batch size — authoritative for inference
+  near_duplicate_jaccard: 0.70       # token-set Jaccard over normalised titles (D-2-02).
+                                     # Tuned on the real MSFT corpus: 7 clusters / 12 docs at
+                                     # 100% precision. Lower values start merging distinct
+                                     # stories (a genuinely distinct MSFT pair scores 0.46).
+  max_sentences_per_section: 400     # DoS guard on a pathological 10-K (T-02-04)
+  min_sentence_chars: 25             # below this is EDGAR table furniture, not a sentence
+  min_alpha_tokens_per_sentence: 4   # ditto — drops "| 1,234 | 5,678 |" rows
+  sentiment_label_band: 0.15         # |score| below this reads as neutral (cosmetic label only)
+  min_aliases_for_entity_gate: 1     # fewer known aliases than this → gate fails open
+  max_controversy_terms: 20          # cap on the persisted audit-trail term list
+  entity_match_ratio: 0.85           # fuzzy ORG↔alias match floor for the entity gate (02-02).
+                                     # It lives here rather than as a "structural constant" in
+                                     # entity.py because a magic number does not stop being one
+                                     # by being called structural.

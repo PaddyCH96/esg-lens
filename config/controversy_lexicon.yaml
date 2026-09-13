@@ -1,16 +1,28 @@
 # Controversy lexicon (§4) - spaCy PhraseMatcher over lemmas
 # Severity 3 severe/systemic, 2 material, 1 minor/allegation, 0 none (implicit)
-# Negation guard demotes severity by 1: cleared of, dismissed, settled without, dropped
+# Negation guard demotes severity by 1: cleared of, dismissed, settled without, charges dropped
 
-version: "2026-09"
+version: "lex@2026-09b"
 
-# Negation phrases - if any appears within 4 tokens before a match, severity -1 (floor 0)
+# Negation phrases — if any appears within `window` tokens on EITHER SIDE of a trigger match,
+# severity is demoted by 1 (floor 0). The window is SYMMETRIC, not "4 tokens before": the
+# commonest real construction is "the lawsuit was dismissed", where the negator FOLLOWS the
+# trigger. A stale comment on a rule that suppresses controversy signal is a future bug.
+#
+# Bare "dropped" was removed in lex@2026-09b. It lemmatises to "drop" and fired on
+# "MSFT Stock Drop: ... Securities Fraud Class Action", silently demoting a tier-3 controversy
+# on a price-movement headline. Only the constrained multi-token forms below survive.
 negation_guard:
   phrases:
     - "cleared of"
     - "dismissed"
     - "settled without"
-    - "dropped"
+    - "charges dropped"
+    - "drop charges"
+    - "case dropped"
+    - "dropped the lawsuit"
+    - "dropped its lawsuit"
+    - "lawsuit dropped"
     - "acquitted of"
     - "exonerated"
   window: 4

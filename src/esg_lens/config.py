@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     # tests a mocked 429/503 then costs ~16s per request of pure sleeping. conftest sets this to 1.
     HTTP_MAX_RETRY_ATTEMPTS: int = Field(default=5, ge=1, le=10)
 
+    # HuggingFace — weights stay inside the project (gitignored) rather than in ~/.cache.
+    # MUST be exported to os.environ before `transformers` is imported anywhere: it reads
+    # HF_HOME at import time to resolve its cache constants, so setting it later is a no-op.
+    HF_HOME: str = Field(default=str(DATA_DIR / "models"))
+    HF_HUB_OFFLINE: bool = Field(default=False)
+
     # Feature flags
     NEWSAPI_ENABLED: bool = Field(default=False)
 
@@ -81,6 +87,12 @@ class Settings(BaseSettings):
 
 # Singleton — import as `from esg_lens.config import settings`
 settings = Settings()
+
+# Export HF_HOME immediately. `transformers` resolves its cache constants at IMPORT time, so a
+# later os.environ assignment (e.g. inside nlp/registry.py, after `import transformers`) silently
+# does nothing and the weights are re-downloaded to ~/.cache. setdefault so an explicit env var
+# from the caller still wins.
+os.environ.setdefault("HF_HOME", settings.HF_HOME)
 
 
 # ---------------------------------------------------------------------------
@@ -110,8 +122,41 @@ class ScoringConfig:
         canonical = json.dumps(raw, sort_keys=True, separators=(",", ":"))
         self._hash = hashlib.sha256(canonical.encode()).hexdigest()
 
+    # Phase 2 requires these; a config edit that drops one must fail loudly at load rather than
+    # produce a KeyError deep inside an inference loop.
+    _REQUIRED_TAU_DOC_TYPES = ("news", "filing_section")
+    _REQUIRED_NLP_KEYS = (
+        "batch_size",
+        "near_duplicate_jaccard",
+        "max_sentences_per_section",
+        "min_sentence_chars",
+        "min_alpha_tokens_per_sentence",
+        "sentiment_label_band",
+        "min_aliases_for_entity_gate",
+        "max_controversy_terms",
+        "entity_match_ratio",
+    )
+
     @staticmethod
     def _validate(raw: dict[str, Any]) -> None:
+        # tau is a per-doc-type mapping (D-2-01), never the pre-0.2.0 scalar. Accepting a scalar
+        # here is exactly how a future edit would silently revert the decision.
+        tau = raw.get("tau")
+        if not isinstance(tau, dict):
+            raise ValueError(
+                f"scoring.yaml: tau must be a per-doc_type mapping (D-2-01), got {type(tau).__name__}"
+            )
+        missing_tau = [k for k in ScoringConfig._REQUIRED_TAU_DOC_TYPES if k not in tau]
+        if missing_tau:
+            raise ValueError(f"scoring.yaml: tau is missing doc_type key(s): {missing_tau}")
+
+        nlp = raw.get("nlp")
+        if not isinstance(nlp, dict):
+            raise ValueError("scoring.yaml: missing required top-level 'nlp' block")
+        missing_nlp = [k for k in ScoringConfig._REQUIRED_NLP_KEYS if k not in nlp]
+        if missing_nlp:
+            raise ValueError(f"scoring.yaml: nlp block is missing key(s): {missing_nlp}")
+
         # category weights per pillar sum to 1.0
         cat_w = raw.get("category_weights", {})
         pillar_map = raw.get("category_to_pillar", {})
