@@ -37,6 +37,17 @@ and it is blocked on an external condition, not on work:
 
 > GDELT is rate-limiting this IP. As of 2026-09-07 a 25-character query at 11-second spacing still
 > returns 429. This was self-inflicted by burst probing during UAT. **Wait at least a day.**
+>
+> **2026-09-14 (7 days later): STILL 429.** A single short theme query — the exact shape 01b-02
+> now produces — was refused. Seven days is no longer a transient cooldown, so the working
+> assumption that this clears on its own is probably wrong. Candidate explanations, untested:
+> a persistent IP block; a shared/NAT/VPN egress IP where someone else's traffic is counted
+> against us; or GDELT simply refusing this endpoint for non-whitelisted IPs. Test the shared-IP
+> theory cheaply by retrying from a different network (phone hotspot) before concluding anything.
+>
+> This elevates the plan's "GDELT unsuitable as primary source" risk from Low-Medium to LIVE.
+> 01b-PLAN.md already says what to do: escalate as an architecture decision (RSS / yfinance news
+> fallback), **do not patch further**.
 > When retrying, the plan's stop condition is binding: send ONE request; if it 429s, stop. Looping
 > is what caused this.
 
