@@ -83,14 +83,19 @@ category names the intel requirement it expands.
       model load inside any loop
 - [ ] **NLP-02**: Cleaning stage — whitespace/boilerplate normalisation, spaCy sentence split,
       near-duplicate detection
-- [ ] **NLP-03**: Entity gate using spaCy `en_core_web_sm` NER — accept when an `ORG` entity fuzzy-matches
+- [x] **NLP-03**: Entity gate using spaCy `en_core_web_sm` NER — accept when an `ORG` entity fuzzy-matches
       an alias or an alias appears as an exact substring of the title; reject with
       `exclusion_reason='entity_mismatch'`
-- [ ] **NLP-04**: ESG classification with `finbert-esg-9-categories`, batched at `batch_size=16`,
+      *(Amended 2026-09-14: the gate is applied PER SOURCE (D-2-03) — `edgar` and any feed whose
+      `entity_gate` key in `config/rss_feeds.yaml` is `skip` bypass it, because the provider
+      asserts identity. The fuzzy floor is `nlp.entity_match_ratio` = 0.85 via
+      `difflib.SequenceMatcher`. A ticker with no usable aliases FAILS OPEN with a
+      `gate_skipped_no_aliases` marker and a warning, never silently. See 02-02-SUMMARY.md.)*
+- [x] **NLP-04**: ESG classification with `finbert-esg-9-categories`, batched at `batch_size=16`,
       returning `(category, probability)`; `Non-ESG` or `prob < tau (0.60)` is excluded
       *(Amended 2026-09-14: `tau` is now per-doc-type — `news` 0.45, `filing_section` 0.60,
       `press_release` 0.45, resolved from `config/scoring.yaml`. See D-2-01.)*
-- [ ] **NLP-05**: Sentiment with `ProsusAI/finbert`, batched, returning `P(pos) − P(neg)` — used as one
+- [x] **NLP-05**: Sentiment with `ProsusAI/finbert`, batched, returning `P(pos) − P(neg)` — used as one
       feature, never as ESG polarity on its own
 - [ ] **NLP-06**: Controversy severity 0–3 via spaCy `PhraseMatcher` over lemmas from the YAML lexicon,
       with the negation guard (`cleared of`, `dismissed`, `settled without`, `dropped`) demoting by 1;
@@ -264,9 +269,9 @@ order and the numbering used in commit messages (`[P0]`..`[P5]`).
 | COLL-07 | Phase 1 | Complete (2026-09-14) |
 | NLP-01 | Phase 2 | Pending |
 | NLP-02 | Phase 2 | Pending |
-| NLP-03 | Phase 2 | Pending |
-| NLP-04 | Phase 2 | Pending |
-| NLP-05 | Phase 2 | Pending |
+| NLP-03 | Phase 2 | Complete (02-02) |
+| NLP-04 | Phase 2 | Complete (02-02) |
+| NLP-05 | Phase 2 | Complete (02-02) |
 | NLP-06 | Phase 2 | Pending |
 | NLP-07 | Phase 2 | Pending |
 | NLP-08 | Phase 2 | Pending |

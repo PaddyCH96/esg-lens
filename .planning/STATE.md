@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: execution
-stopped_at: Phase 2 Plan 02-01 complete — NLP foundation (config, provenance, registry, fixtures, clean.py). Next: 02-02.
+stopped_at: Phase 2 Plan 02-02 complete — entity gate, alias seeding, classification, sentiment. Next: 02-03.
 last_updated: "2026-09-14T00:00:00.000Z"
-last_activity: 2026-09-14 — 02-01 executed; near-duplicate collapse measured on the real corpus (8 clusters / 19 documents) after the plan's impossible "7 clusters / 12 documents" target was corrected mid-execution
+last_activity: 2026-09-14 — 02-02 executed; company_aliases seeded from the cached EDGAR titles (was 0 rows), the entity gate fails open loudly, classification is batched and tau'd per doc type. Suite 252 passed / 17 skipped
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 22
-  completed_plans: 11
-  percent: 43
+  completed_plans: 12
+  percent: 45
 ---
 
 # Project State
@@ -27,17 +27,24 @@ formula behind any number are visible, and the system says `insufficient_data` r
 ## Current Position
 
 Phase: 1 of 5 (Collectors) — numbering follows docs/handoff_to_backend.md §1 (Phase 0–5)
-Plan: Phase 2 — 1 of 3 plans executed (02-01 complete 2026-09-14)
+Plan: Phase 2 — 2 of 3 plans executed (02-01, 02-02 complete 2026-09-14)
 Status: **Phase 2 in progress. 01b-04 still blocked on GDELT rate limiting (see below).**
 
 ### Resume here
 
-**Phase 2, Plan 02-02** — entity gate, ESG classification, sentiment.
-`.planning/phases/02-nlp-pipeline/02-02-PLAN.md`. Everything it depends on is in place:
-`registry.get_*` accessors, `clean.text_for_matching`, the exported real-corpus fixture and the
-`stub_pipelines` / `spacy_nlp` / `capture_logs` / `nlp_corpus` / `signals_conn` conftest fixtures.
-See `02-01-SUMMARY.md`, especially the tokenizer-pinning section — cluster counts come from
-`tests/nlp_fixture_meta.py`, they are never retyped into a test.
+**Phase 2, Plan 02-03** — controversy detection, the pipeline that persists everything, and the
+three Phase 2 scoring functions. `.planning/phases/02-nlp-pipeline/02-03-PLAN.md`.
+
+Everything it consumes is in place and documented in `02-02-SUMMARY.md`'s "What 02-03 Inherits":
+`entity.gate_decision` (returns decisions, writes nothing — 02-03 owns persistence),
+`classify.classify_documents` / `classify_section`, `sentiment.score_texts` / `label_for` /
+`aggregate_section`, and `alias_seed.seed_from_edgar_cache`.
+
+Two things 02-03 must not undo:
+- The gate's spaCy pass is CASED (NER). 02-03's controversy pass is LOWERCASED (lemmas). **Do not
+  merge them** — `test_ner_on_cased_text_finds_more_orgs_than_on_lowercased_text` fails if you do.
+- `polarity` stays NULL until Phase 3. `sentiment_score` is FINANCIAL sentiment, not ESG polarity:
+  "Microsoft carbon emissions rose 25%" is +0.919 POSITIVE and that is correct.
 
 **Do NOT re-run `scripts/backfill.py`.** Every Phase 2 threshold is calibrated to the exact 338
 rows now in `data/esg_lens.db`. Backup at `data/esg_lens.db.bak`.
@@ -92,16 +99,20 @@ Progress: [██░░░░░░░░] 28% (5/18 plans)
   exposing `version`/`config_hash`, all three `config/*.yaml` populated, `db/schema.sql` (224 lines),
   `db/engine.py`, `scripts/init_db.py`. No `.planning/phases/00-scaffold/` directory exists — Phase 0
   was executed outside the GSD plan flow, so it has no PLAN/SUMMARY artifacts.
+
 - **Phase 1 — Collectors: EXECUTED, awaiting UAT.** Commits `34aed79`..`854236c`. `collectors/`
   is 1,468 LOC: `http.py` (token bucket, tenacity 429/5xx, hishel 24h cache), `base.py`
   (Collector ABC, `RawDocument`, `content_hash`), `gdelt.py`, `edgar.py` (CIK 7d cache, 10-K
   Item 1/1A split), `yfinance_meta.py`, `newsapi.py` (flagged off). Plus `scripts/backfill.py`.
+
 - **Phase 2 — NLP: NOT STARTED.** `nlp/clean.py` (48) and `nlp/registry.py` (43) exist from the
   pre-GSD boilerplate commit `778b961`, not from a Phase 2 plan. `classify.py`, `sentiment.py`,
   `entity.py`, `controversy.py`, `pipeline.py` are all 0 bytes.
+
 - **Phases 3–5: NOT STARTED.** All files in `scoring/`, `api/`, `jobs/` are 0 bytes, except the
   Phase 3 acceptance test at `tests/unit/test_scoring_fixture.py`, which is written and skipping
   until `scoring/` exists.
+
 - **Test suite: 66 passing** (`python3 -m pytest -q`, ~11s), plus 5 skipping Phase 3 fixtures.
 
 ## Performance Metrics
@@ -147,12 +158,15 @@ contains no ADR-class documents. Most relevant to current and near work:
 - **Close Phase 1 UAT** — 6 of 7 tests pending in `01-collectors/01-UAT.md`. Phase 1 cannot be
   marked verified until these pass. Tests 3 (never-raise), 4 (EDGAR User-Agent + rate limits) and
   5 (yfinance sustainability isolation) guard the three highest-risk traps in the handoff doc.
+
 - Promote D-008 and D-009 to real ADRs (`/gsd:decide`) — recommended by INGEST-CONFLICTS.md I-001/I-012.
   D-008 (the `w_ev`/`w` split) is now enforced by `tests/unit/test_scoring_fixture.py`, but a passing
   test is not a locked decision — a later plan cannot be blocked against it until an ADR exists.
+
 - Reconcile `src/esg_lens/models.py` (0 bytes) with `architecture.md` §4, which specifies it as the
   pydantic domain-model layer. Collectors use the `RawDocument` dataclass in `collectors/base.py`
   instead. Either move it into `models.py` or delete the empty file and amend the doc.
+
 - Rewrite `db/repositories.py` (42 LOC, `**kwargs` dynamic SQL, only Company + Document repos)
   with explicit columns before Phase 3 — it will not survive append-only score writes and
   `score_contributions` ranking.

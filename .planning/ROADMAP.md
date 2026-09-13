@@ -105,10 +105,10 @@ excluded one with a stated reason — fast enough to run on a laptop CPU.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Config surface (per-doc-type `tau`, `nlp` block, lexicon `lex@2026-09b`),
+- [x] 02-01-PLAN.md — Config surface (per-doc-type `tau`, `nlp` block, lexicon `lex@2026-09b`),
       RSS `_rss_feed` provenance + backfill, `nlp/registry.py` singletons, real-corpus fixture and
       stub harness, `nlp/clean.py` normalisation / sentence split / near-duplicate collapse
-- [ ] 02-02-PLAN.md — EDGAR-cached alias seeding, `nlp/entity.py` per-feed trust gate that fails
+- [x] 02-02-PLAN.md — EDGAR-cached alias seeding, `nlp/entity.py` per-feed trust gate that fails
       open loudly, `nlp/classify.py` batched FinBERT-ESG with per-doc-type `tau` and filing-section
       aggregation, `nlp/sentiment.py` batched `P(pos) − P(neg)`
 - [ ] 02-03-PLAN.md — `nlp/controversy.py` lemma PhraseMatcher with the lowercasing fix, symmetric
@@ -235,7 +235,7 @@ Phases execute in numeric order: 0 → 1 → 1b → **1c** → 2 → 3 → 4 →
 | 1. Collectors | 3/3 | ✅ Goal met via RSS — 242 docs collected | 2026-09-14 |
 | 1b. GDELT Rework | 4/4 code | ⚪ Superseded by 1c — code retained, opt-in | - |
 | 1c. RSS Primary | 1/1 | ✅ Complete — RSS replaces GDELT | 2026-09-14 |
-| 2. NLP Pipeline | 0/3 | Not started | - |
+| 2. NLP Pipeline | 2/3 | 🔵 In progress — 02-03 remains | 2026-09-14 |
 | 3. Scoring Engine | 0/3 | Not started (acceptance test written) | - |
 | 4. API & Jobs | 0/5 | Not started | - |
 | 5. Validation & Publication | 0/2 | Not started | - |
