@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: execution
-stopped_at: Phase 1c complete — RSS is primary, news flows. Phase 2 unblocked.
-last_updated: "2026-09-05T00:00:00.000Z"
-last_activity: 2026-09-05 — State reconciled with codebase; Phase 3 acceptance fixture written ahead of implementation
+stopped_at: Phase 2 Plan 02-01 complete — NLP foundation (config, provenance, registry, fixtures, clean.py). Next: 02-02.
+last_updated: "2026-09-14T00:00:00.000Z"
+last_activity: 2026-09-14 — 02-01 executed; near-duplicate collapse measured on the real corpus (8 clusters / 19 documents) after the plan's impossible "7 clusters / 12 documents" target was corrected mid-execution
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 22
-  completed_plans: 10
+  completed_plans: 11
   percent: 43
 ---
 
@@ -27,10 +27,22 @@ formula behind any number are visible, and the system says `insufficient_data` r
 ## Current Position
 
 Phase: 1 of 5 (Collectors) — numbering follows docs/handoff_to_backend.md §1 (Phase 0–5)
-Plan: 3 of 3 executed in current phase
-Status: **Phase 1b in progress — 3 of 4 tasks complete (2026-09-07).**
+Plan: Phase 2 — 1 of 3 plans executed (02-01 complete 2026-09-14)
+Status: **Phase 2 in progress. 01b-04 still blocked on GDELT rate limiting (see below).**
 
 ### Resume here
+
+**Phase 2, Plan 02-02** — entity gate, ESG classification, sentiment.
+`.planning/phases/02-nlp-pipeline/02-02-PLAN.md`. Everything it depends on is in place:
+`registry.get_*` accessors, `clean.text_for_matching`, the exported real-corpus fixture and the
+`stub_pipelines` / `spacy_nlp` / `capture_logs` / `nlp_corpus` / `signals_conn` conftest fixtures.
+See `02-01-SUMMARY.md`, especially the tokenizer-pinning section — cluster counts come from
+`tests/nlp_fixture_meta.py`, they are never retyped into a test.
+
+**Do NOT re-run `scripts/backfill.py`.** Every Phase 2 threshold is calibrated to the exact 338
+rows now in `data/esg_lens.db`. Backup at `data/esg_lens.db.bak`.
+
+### Still open from Phase 1b
 
 `01b-01`, `01b-02`, `01b-03` are done, committed and pushed. **`01b-04` is the only thing left**
 and it is blocked on an external condition, not on work:
