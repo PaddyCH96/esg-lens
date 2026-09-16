@@ -236,12 +236,12 @@ Phases execute in numeric order: 0 → 1 → 1b → **1c** → 2 → 3 → 4 →
 | 1. Collectors | 3/3 | ✅ Goal met via RSS — 242 docs collected | 2026-09-14 |
 | 1b. GDELT Rework | 4/4 code | ⚪ Superseded by 1c — code retained, opt-in | - |
 | 1c. RSS Primary | 1/1 | ✅ Complete — RSS replaces GDELT | 2026-09-14 |
-| 2. NLP Pipeline | 2/3 | 🔵 In progress — 02-03 remains | 2026-09-14 |
+| 2. NLP Pipeline | 3/3 | ✅ Complete — 148/338 signals, all pillars | 2026-09-16 |
 | 3. Scoring Engine | 0/3 | Not started (acceptance test written) | - |
 | 4. API & Jobs | 0/5 | Not started | - |
 | 5. Validation & Publication | 0/2 | Not started | - |
 
-**Overall: 10/23 plans (43%).** Verified 2026-09-05; Phase 1b (4 plans) added 2026-09-07 after Phase 1 failed verification.
+**Overall: 13/23 plans (57%).** Verified 2026-09-05; Phase 1b (4 plans) added 2026-09-07 after Phase 1 failed verification.
 
 Notes:
 - Phase 0 was executed outside the GSD plan flow, so there is no `.planning/phases/00-scaffold/`

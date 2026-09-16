@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-09-02)
 
 **Core value:** Every score is fully auditable and reproducible — the exact documents, weights and
 formula behind any number are visible, and the system says `insufficient_data` rather than inventing one.
-**Current focus:** Phase 2 — NLP Pipeline (unblocked 2026-09-14)
+**Current focus:** Phase 2 verification, then Phase 3 — Scoring Engine
 
 ## Current Position
 
