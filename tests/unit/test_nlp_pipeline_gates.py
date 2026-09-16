@@ -11,6 +11,8 @@ broken (gap G-4).
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from esg_lens.nlp import pipeline
@@ -289,3 +291,117 @@ def test_unused_exclusion_reasons_have_no_producer_in_v1(signals_conn, reason):
         "SELECT COUNT(*) FROM esg_signals WHERE exclusion_reason = ?", (reason,)
     ).fetchone()[0]
     assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# D-2-03: the fail-open path, exercised through the DATABASE rather than by
+# handing gate_decision() a hand-written alias list.
+# ---------------------------------------------------------------------------
+# Nestle's unsponsored ADR. It is a real, large, ESG-relevant issuer that does NOT file with the
+# SEC, so it is absent from data/cache/company_tickers.json and alias_seed can give it nothing.
+# That is the production trigger for the fail-open branch, which had 0 occurrences in the live
+# corpus because all three seeded tickers happen to be SEC filers.
+UNSEEDABLE_TICKER = "NSRGY"
+
+
+def _insert_unseedable_company(conn):
+    """A company yfinance 404'd and the SEC cache does not know: name is still the bare ticker."""
+    conn.execute(
+        "INSERT INTO companies (ticker, name, fetched_at) VALUES (?, ?, '2026-09-14T00:00:00Z')",
+        (UNSEEDABLE_TICKER, UNSEEDABLE_TICKER),
+    )
+    conn.commit()
+
+
+def test_a_ticker_with_no_usable_aliases_in_the_database_is_admitted_marked_and_warned(
+    signals_conn, capture_logs
+):
+    """The whole fail-open decision rests on this branch and production has never hit it.
+
+    Failing CLOSED would exclude 100% of this ticker's news and leave a pipeline that runs clean
+    and finds nothing. Admitting is only defensible because the persisted marker and the warning
+    make the blind spot auditable. All four behaviours are asserted against the DB and the log
+    stream, not against a hand-constructed GateDecision.
+    """
+    _insert_unseedable_company(signals_conn)
+    _insert_doc(
+        signals_conn,
+        9001,
+        UNSEEDABLE_TICKER,
+        "Nestle faces scrutiny over palm oil deforestation in Indonesia",
+        RECENT,
+    )
+
+    doc = signals_conn.execute("SELECT * FROM raw_documents WHERE id = 9001").fetchone()
+    _run(signals_conn, [doc])
+
+    row = _signal_rows(signals_conn)[9001]
+    assert row["included"] == 1, "failing closed here reproduces the Phase 1 failure mode"
+    assert row["exclusion_reason"] is None
+
+    marker = json.loads(row["entities_json"])
+    assert marker["gate_skipped"] == "no_aliases"
+    assert marker["gate_skipped_no_aliases"] is True
+
+    warnings = [r for r in capture_logs if r["event"] == "entity_gate_skipped_no_aliases"]
+    assert warnings, "the gate admitted a document it could not check and said nothing"
+    assert warnings[0]["log_level"] == "warning"
+    assert warnings[0]["ticker"] == UNSEEDABLE_TICKER
+    assert warnings[0]["document_id"] == 9001
+
+
+def test_a_seeded_ticker_carries_no_fail_open_marker(signals_conn):
+    """The counterweight: the marker must mean something, so it must be absent when aliases exist."""
+    _insert_doc(signals_conn, 9002, "MSFT", "Microsoft expands carbon removal purchases", RECENT)
+
+    doc = signals_conn.execute("SELECT * FROM raw_documents WHERE id = 9002").fetchone()
+    _run(signals_conn, [doc])
+
+    marker = json.loads(_signal_rows(signals_conn)[9002]["entities_json"])
+    assert "gate_skipped_no_aliases" not in marker
+
+
+# ---------------------------------------------------------------------------
+# D-2-02: filing sections are never lexically deduplicated
+# ---------------------------------------------------------------------------
+def test_distinct_filings_sharing_a_synthetic_title_are_never_deduplicated(signals_conn):
+    """EDGAR section titles are labels the splitter writes, not content.
+
+    Every 8-K a company files is titled 'SEC Filing 8-K', so title jaccard is 1.0 between filings
+    that are entirely different legal events months apart. Collapsing them discarded 16 of the 28
+    filing sections in the real corpus. Two filings from one issuer are never two copies of one
+    document; `UNIQUE (ticker, content_hash)` already makes exact duplicates unstorable.
+    """
+    for doc_id, published in ((9101, "2026-08-01T00:00:00Z"), (9102, "2026-05-01T00:00:00Z")):
+        _insert_doc(
+            signals_conn, doc_id, "MSFT", "SEC Filing 8-K", published, doc_type="filing_section"
+        )
+
+    docs = [
+        signals_conn.execute("SELECT * FROM raw_documents WHERE id = ?", (i,)).fetchone()
+        for i in (9101, 9102)
+    ]
+    _run(signals_conn, docs)
+
+    rows = _signal_rows(signals_conn)
+    assert rows[9101]["exclusion_reason"] != "duplicate"
+    assert rows[9102]["exclusion_reason"] != "duplicate"
+    assert rows[9101]["duplicate_of"] is None
+    assert rows[9102]["duplicate_of"] is None
+
+
+def test_news_sharing_a_title_is_still_deduplicated(signals_conn):
+    """The exemption is scoped to filing sections; syndicated news must still collapse."""
+    title = "Microsoft Corporation Securities Class Action Lawsuit Deadline Alert Filed"
+    for doc_id in (9201, 9202):
+        _insert_doc(signals_conn, doc_id, "MSFT", title, RECENT)
+
+    docs = [
+        signals_conn.execute("SELECT * FROM raw_documents WHERE id = ?", (i,)).fetchone()
+        for i in (9201, 9202)
+    ]
+    _run(signals_conn, docs)
+
+    rows = _signal_rows(signals_conn)
+    reasons = {rows[9201]["exclusion_reason"], rows[9202]["exclusion_reason"]}
+    assert "duplicate" in reasons, "the dedup exemption must not leak into news"

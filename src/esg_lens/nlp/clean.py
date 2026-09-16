@@ -101,6 +101,11 @@ def content_tokens(title: str) -> frozenset[str]:
     return frozenset(_TOKEN_RE.findall((title or "").lower()))
 
 
+# Doc types whose titles are synthetic labels rather than content, and whose members are distinct
+# legal events by construction. See `cluster_near_duplicates` — exempting them is load-bearing.
+NEVER_LEXICALLY_DEDUPED = frozenset({"filing_section"})
+
+
 def jaccard(a: Iterable[str], b: Iterable[str]) -> float:
     sa, sb = frozenset(a), frozenset(b)
     if not sa or not sb:
@@ -130,6 +135,21 @@ def cluster_near_duplicates(docs, threshold: float | None = None) -> dict[Any, A
     alert weekly until the lead-plaintiff date. A same-day constraint was measured against this
     corpus and breaks the feature outright. Do not "optimise" one back in.
 
+    **`filing_section` is NEVER lexically clustered.** This feature catches syndicated re-posts —
+    the same press release carried by eight outlets. SEC filings have no such thing: two filings
+    from one issuer are two distinct legal events at two distinct dates, never two copies of one
+    document. Their titles are also SYNTHETIC labels the EDGAR splitter writes ('SEC Filing 8-K',
+    'SEC 10-K - Item 1A'), so every 8-K a company files scores jaccard 1.0 against every other.
+    Measured on the real corpus that collapsed 16 of 28 filing sections — five distinct MSFT 8-Ks
+    with 3.8-4.8kB of different bodies reduced to one, and three years of 10-K Item 1 reduced to
+    one — throwing away the filing evidence base while the suite stayed green.
+
+    Nothing is lost by exempting them: `raw_documents` carries ``UNIQUE (ticker, content_hash)``,
+    so a byte-identical re-collection can never be stored in the first place. Lexical clustering
+    on top of that exact-duplicate guarantee can only produce false positives. Adding the body to
+    the token set was measured and is NOT sufficient — consecutive quarterly 8-Ks still score
+    0.94-0.96 on shared XBRL boilerplate.
+
     Complexity is O(n^2) within a block. At n=101 that is 5,050 set intersections, measured well
     under 100ms. The job cap is 25 tickers x ~150 documents, so this stays trivial. Revisit with
     MinHash/LSH only if a single ticker ever exceeds ~2,000 documents.
@@ -150,7 +170,10 @@ def cluster_near_duplicates(docs, threshold: float | None = None) -> dict[Any, A
 
     blocks: dict[tuple, list] = {}
     for d in docs:
-        blocks.setdefault((_field(d, "ticker"), _field(d, "doc_type")), []).append(d)
+        doc_type = _field(d, "doc_type")
+        if doc_type in NEVER_LEXICALLY_DEDUPED:
+            continue
+        blocks.setdefault((_field(d, "ticker"), doc_type), []).append(d)
 
     for block in blocks.values():
         for a, b in combinations(block, 2):
