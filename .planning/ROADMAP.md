@@ -28,7 +28,7 @@ which is the one-session unit. The `Plans` lists below preserve that property.
 
 - [ ] **Phase 0: Scaffold** - Config loader, three populated YAML files, verbatim schema, JSON logging
 - [ ] **Phase 1: Collectors** - GDELT + EDGAR + yfinance behind one cached, rate-limited, never-raising HTTP layer
-- [ ] **Phase 2: NLP Pipeline** - Entity gate → ESG classify → sentiment → controversy lexicon → `esg_signals`
+- [x] **Phase 2: NLP Pipeline** - Entity gate → ESG classify → sentiment → controversy lexicon → `esg_signals`
 - [ ] **Phase 3: Scoring Engine** - Pure-function weighting, aggregation, penalty, gate, composite, confidence
 - [ ] **Phase 4: API & Jobs** - FastAPI routes, RFC-7807 errors, background job state machine, startup sweeps
 - [ ] **Phase 5: Validation & Publication** - Sensitivity analysis, benchmark correlation, published limitations
@@ -102,7 +102,8 @@ excluded one with a stated reason — fast enough to run on a laptop CPU.
   5. Every controversy hit stores its matched lexicon terms, and a negated phrase ("cleared of ...")
      scores exactly one severity tier lower
   6. Re-running the pipeline over already-processed documents at the same `model_version` is a no-op
-**Plans**: 3 plans
+**Plans**: 3 plans — all 3 executed 2026-09-14/16; see `phases/02-nlp-pipeline/02-PHASE-SUMMARY.md`.
+All six success criteria are asserted by tests (suite 306 passed / 17 skipped).
 
 Plans:
 - [x] 02-01-PLAN.md — Config surface (per-doc-type `tau`, `nlp` block, lexicon `lex@2026-09b`),
@@ -111,7 +112,7 @@ Plans:
 - [x] 02-02-PLAN.md — EDGAR-cached alias seeding, `nlp/entity.py` per-feed trust gate that fails
       open loudly, `nlp/classify.py` batched FinBERT-ESG with per-doc-type `tau` and filing-section
       aggregation, `nlp/sentiment.py` batched `P(pos) − P(neg)`
-- [ ] 02-03-PLAN.md — `nlp/controversy.py` lemma PhraseMatcher with the lowercasing fix, symmetric
+- [x] 02-03-PLAN.md — `nlp/controversy.py` lemma PhraseMatcher with the lowercasing fix, symmetric
       negation guard and matched-term storage; `esg_signals.duplicate_of` column; the three
       `scoring/weights.py` arithmetic functions; `nlp/pipeline.py` writing `esg_signals`
 

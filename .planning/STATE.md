@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: execution
-stopped_at: Phase 2 Plan 02-02 complete — entity gate, alias seeding, classification, sentiment. Next: 02-03.
-last_updated: "2026-09-14T00:00:00.000Z"
-last_activity: 2026-09-14 — 02-02 executed; company_aliases seeded from the cached EDGAR titles (was 0 rows), the entity gate fails open loudly, classification is batched and tau'd per doc type. Suite 252 passed / 17 skipped
+stopped_at: Phase 2 COMPLETE (02-01, 02-02, 02-03). Next: Phase 3 — scoring engine.
+last_updated: "2026-09-16T00:00:00.000Z"
+last_activity: 2026-09-16 — 02-03 executed and Phase 2 closed: controversy severity that fires on Title Case headlines, duplicate_of FK, the three weight functions, and pipeline.py turning every raw_documents row into exactly one esg_signals row. Suite 306 passed / 17 skipped
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 22
-  completed_plans: 12
-  percent: 45
+  completed_plans: 13
+  percent: 55
 ---
 
 # Project State
@@ -27,24 +27,33 @@ formula behind any number are visible, and the system says `insufficient_data` r
 ## Current Position
 
 Phase: 1 of 5 (Collectors) — numbering follows docs/handoff_to_backend.md §1 (Phase 0–5)
-Plan: Phase 2 — 2 of 3 plans executed (02-01, 02-02 complete 2026-09-14)
-Status: **Phase 2 in progress. 01b-04 still blocked on GDELT rate limiting (see below).**
+Plan: Phase 2 — 3 of 3 plans executed (02-01, 02-02 complete 2026-09-14; 02-03 complete 2026-09-16)
+Status: **Phase 2 COMPLETE. 01b-04 still blocked on GDELT rate limiting (see below).**
 
 ### Resume here
 
-**Phase 2, Plan 02-03** — controversy detection, the pipeline that persists everything, and the
-three Phase 2 scoring functions. `.planning/phases/02-nlp-pipeline/02-03-PLAN.md`.
+**Phase 3 — the scoring engine.** Phase 2 is closed; see
+`.planning/phases/02-nlp-pipeline/02-PHASE-SUMMARY.md` for what it delivered and what it
+deliberately left undone.
 
-Everything it consumes is in place and documented in `02-02-SUMMARY.md`'s "What 02-03 Inherits":
-`entity.gate_decision` (returns decisions, writes nothing — 02-03 owns persistence),
-`classify.classify_documents` / `classify_section`, `sentiment.score_texts` / `label_for` /
-`aggregate_section`, and `alias_seed.seed_from_edgar_cache`.
+What Phase 3 inherits: `esg_signals` rows for every document, carrying `included`/
+`exclusion_reason`/`duplicate_of`, `category`/`pillar`/`relevance`, `sentiment_score`/
+`sentiment_label`, `controversy_severity`/`controversy_terms`, all five weights, and
+`model_version`. `scoring/weights.py` holds `recency_weight`, `evidence_weight`, `scoring_weight`.
 
-Two things 02-03 must not undo:
-- The gate's spaCy pass is CASED (NER). 02-03's controversy pass is LOWERCASED (lemmas). **Do not
-  merge them** — `test_ner_on_cased_text_finds_more_orgs_than_on_lowercased_text` fails if you do.
-- `polarity` stays NULL until Phase 3. `sentiment_score` is FINANCIAL sentiment, not ESG polarity:
-  "Microsoft carbon emissions rose 25%" is +0.919 POSITIVE and that is correct.
+What Phase 3 owns and Phase 2 deliberately did NOT write:
+- `weights.polarity` — `test_phase2_weights.py` asserts it is not callable.
+- `esg_signals.polarity` — NULL on every row.
+- `scoring/aggregate.py` and `scoring/composite.py` — still empty.
+`tests/unit/test_scoring_fixture.py` is the acceptance contract and currently reports **17
+skipped**. It unskips as those callables appear. `evidence_weight` takes `tau` keyword-only with a
+default precisely so that fixture's three-positional-argument calls keep working.
+
+Two things Phase 3 must not misread:
+- `sentiment_score` is FINANCIAL sentiment, not ESG polarity: "Microsoft carbon emissions rose 25%"
+  is +0.919 POSITIVE and that is correct. Combine it with `controversy_severity` and category.
+- `weight_evidence` is the SUFFICIENCY weight (excludes `w_cat`, D-008); `weight_total` is the
+  AGGREGATION weight. Swapping them reintroduces the contradictory §8 worked example.
 
 **Do NOT re-run `scripts/backfill.py`.** Every Phase 2 threshold is calibrated to the exact 338
 rows now in `data/esg_lens.db`. Backup at `data/esg_lens.db.bak`.
