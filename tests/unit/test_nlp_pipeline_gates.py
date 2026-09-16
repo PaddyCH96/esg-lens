@@ -27,6 +27,18 @@ OFF_TOPIC_TITLE = "Nvidia vs. AMD: Elon Musk Picked a Side on the SpaceX Earning
 GOOGLE_NEWS_RAW_JSON = '{"_rss_feed": "google_news"}'
 
 
+@pytest.fixture(autouse=True)
+def _stub_inference(stub_pipelines):
+    """Stage 6 (batched classification) landed in Task 3b, so every run in this file would
+    otherwise construct 400MB of real weights to assert a gate decision that never reaches them.
+
+    The stubs weaken nothing here: not one assertion in this module concerns a model's output.
+    They admit everything the earlier gates admit, so the gate precedence, dedup bookkeeping and
+    never-raise assertions below observe exactly what they observed before stage 6 existed.
+    """
+    return stub_pipelines
+
+
 def _insert_doc(conn, doc_id, ticker, title, published_at, *, doc_type="news", raw_json=None):
     conn.execute(
         "INSERT INTO raw_documents "

@@ -204,13 +204,16 @@ def test_the_clustered_documents_cost_one_classification_per_survivor(
     assert len(clustered_ids) == MSFT_CLUSTERED_DOCUMENT_COUNT
 
     by_id = {d["id"]: d for d in _all_docs(signals_conn)}
-    clustered_texts = {doc_id: pipeline.document_text(by_id[doc_id]) for doc_id in clustered_ids}
+    # Counted over SUBMISSIONS, not over ids: members of a cluster frequently share a
+    # byte-identical title, so counting `submitted.count(text)` once per id would charge the
+    # survivor's single classification to every duplicate that happens to read the same.
+    clustered_texts = {pipeline.document_text(by_id[doc_id]) for doc_id in clustered_ids}
 
     submitted: list[str] = []
     for call in stub_pipelines["esg"].calls:
         submitted.extend(call)
 
-    classified = sum(submitted.count(text) for text in clustered_texts.values())
+    classified = sum(1 for text in submitted if text in clustered_texts)
     assert classified == MSFT_MULTI_DOC_CLUSTER_COUNT, (
         f"{MSFT_CLUSTERED_DOCUMENT_COUNT} clustered documents cost {classified} classifications; "
         f"exactly one per cluster survivor ({MSFT_MULTI_DOC_CLUSTER_COUNT}) is the contract"
