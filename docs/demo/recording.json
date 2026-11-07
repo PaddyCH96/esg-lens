@@ -1,0 +1,15 @@
+{
+  "recorded_at": "2026-11-07T14:41:39.006Z",
+  "mode": "live",
+  "checks": [
+    "portfolio submission",
+    "evidence",
+    "company switch",
+    "JSON export",
+    "missing company",
+    "invalid ticker",
+    "mobile layout",
+    "refresh recovery",
+    "no JS errors"
+  ]
+}
