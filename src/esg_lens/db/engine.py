@@ -34,6 +34,35 @@ def get_connection(db_path: str | Path | None = None) -> sqlite3.Connection:
     return conn
 
 
+def _allow_rss_sources(conn: sqlite3.Connection, schema: str) -> None:
+    """Expand the source constraint while preserving document IDs and references."""
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        with conn:
+            conn.execute("BEGIN IMMEDIATE")
+            table = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='raw_documents'"
+            ).fetchone()
+            if table is None or "'google_rss'" in table["sql"]:
+                return
+            ddl = schema.split("CREATE TABLE IF NOT EXISTS raw_documents (", 1)[1].split(");", 1)[0]
+            # The column set is unchanged. Name columns so copy order is independent of DDL order.
+            columns = ", ".join(row["name"] for row in conn.execute("PRAGMA table_info(raw_documents)"))
+            conn.execute("CREATE TABLE raw_documents_rss (" + ddl + ")")
+            conn.execute(f"INSERT INTO raw_documents_rss ({columns}) SELECT {columns} FROM raw_documents")
+            sequence = conn.execute("SELECT seq FROM sqlite_sequence WHERE name='raw_documents'").fetchone()
+            conn.execute("DROP TABLE raw_documents")
+            conn.execute("ALTER TABLE raw_documents_rss RENAME TO raw_documents")
+            if sequence:
+                conn.execute(
+                    "UPDATE sqlite_sequence SET seq=max(seq, ?) WHERE name='raw_documents'", (sequence["seq"],)
+                )
+            if conn.execute("PRAGMA foreign_key_check").fetchone():
+                raise sqlite3.IntegrityError("RSS schema migration broke foreign keys")
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+
 def init_db(db_path: str | Path | None = None) -> Path:
     """Apply schema.sql to create all tables + view. Idempotent."""
     path = Path(db_path) if db_path else Path(settings.DB_PATH)
@@ -41,6 +70,7 @@ def init_db(db_path: str | Path | None = None) -> Path:
 
     conn = get_connection(path)
     try:
+        _allow_rss_sources(conn, schema_sql)
         conn.executescript(schema_sql)
         conn.commit()
     finally:

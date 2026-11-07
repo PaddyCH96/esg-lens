@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS raw_documents (
     ticker         TEXT NOT NULL REFERENCES companies(ticker) ON DELETE CASCADE,
     -- Keep in sync with the API `sources` enum in api_design.md §1. Add 'rss' only
     -- alongside an actual RSS collector; research_notes.md §2.4 lists it as unevaluated.
-    source         TEXT NOT NULL CHECK (source IN ('gdelt','edgar','yfinance','newsapi')),
+    source         TEXT NOT NULL CHECK (source IN ('gdelt','edgar','yfinance','newsapi','google_rss','sec_litigation')),
     doc_type       TEXT NOT NULL CHECK (doc_type IN ('news','filing_section','press_release')),
     external_id    TEXT,                               -- GDELT doc id / EDGAR accession no.
     url            TEXT,

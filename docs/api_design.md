@@ -47,7 +47,7 @@ Queues an analysis. Returns immediately — **never blocks on NLP**.
   "tickers": ["AAPL", "XOM", "JPM"],
   "force_refresh": false,
   "lookback_days": 365,
-  "sources": ["gdelt", "edgar", "yfinance"]
+  "sources": ["google_rss", "edgar", "yfinance"]
 }
 ```
 
@@ -56,7 +56,7 @@ Queues an analysis. Returns immediately — **never blocks on NLP**.
 | `tickers` | `string[]` | ✅ | — | 1–25 items, deduped, uppercased |
 | `force_refresh` | `bool` | ✗ | `false` | Bypass the HTTP cache and re-collect |
 | `lookback_days` | `int` | ✗ | `365` | 30–730 |
-| `sources` | `string[]` | ✗ | all enabled | Subset of `gdelt`, `edgar`, and `yfinance`. NewsAPI is disabled for v1. |
+| `sources` | `string[]` | ✗ | Google RSS, EDGAR, Yahoo Finance | Also accepts `gdelt` and `sec_litigation` as explicit options. NewsAPI is disabled for v1. |
 
 **`202 Accepted`**
 ```json
@@ -206,6 +206,10 @@ Returns the **latest stored** score. Read-only — it never triggers collection 
   "is_stale": false
 }
 ```
+
+`evidence.source_coverage` reports the earliest and latest observed publication date
+per source. Google RSS contributions include the publisher when available and a
+`url_is_wrapper` flag for Google-hosted links.
 
 **`200` with `status: "insufficient_data"`** — `composite` is `null`, pillars present but null,
 and `evidence` still returned so the caller can see *why*. This is a success, not an error.

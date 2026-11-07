@@ -18,7 +18,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from esg_lens.config import PROJECT_ROOT, get_scoring_config, settings
 from esg_lens.db.engine import get_connection, get_db, init_db
 from esg_lens.logging import configure_logging
-from esg_lens.jobs.runner import DEFAULT_SOURCES, enqueue, run_job, sweep
+from esg_lens.jobs.runner import AVAILABLE_SOURCES, DEFAULT_SOURCES, enqueue, run_job, sweep
 from esg_lens.nlp.pipeline import SignalPipeline, signal_version
 from esg_lens.nlp.registry import model_registry
 
@@ -49,8 +49,8 @@ class AnalyzeRequest(BaseModel):
     @field_validator("sources")
     @classmethod
     def validate_sources(cls, values):
-        if any(value not in DEFAULT_SOURCES for value in values):
-            raise ValueError("Enabled sources: " + ", ".join(DEFAULT_SOURCES))
+        if any(value not in AVAILABLE_SOURCES for value in values):
+            raise ValueError("Enabled sources: " + ", ".join(AVAILABLE_SOURCES))
         return list(dict.fromkeys(values))
 
 
@@ -191,7 +191,7 @@ def create_app(models=model_registry, pipeline_factory=SignalPipeline):
         }
         evidence = {"n_documents_collected": row["n_documents"], "n_documents_esg_relevant": row["n_signals"],
                     "window": {"start": row["window_start"], "end": row["window_end"]},
-                    "sources": snapshot.get("sources", {})}
+                    "sources": snapshot.get("sources", {}), "source_coverage": snapshot.get("source_coverage", {})}
         if include_evidence:
             evidence["top_contributors"] = snapshot.get("top_contributors", [])[:evidence_limit]
         computed = datetime.fromisoformat(row["computed_at"])

@@ -143,8 +143,9 @@ class SignalPipeline:
                 published = published.replace(tzinfo=timezone.utc)
             age = max(0.0, (now - published).total_seconds() / 86400)
             tier = source_tier(row["domain"], self.sources)
-            source_weight = (self.sources["filing"]["weight"] if row["source"] == "edgar"
-                             else self.sources["tiers"][tier]["weight"])
+            source_weights = {"edgar": self.sources["filing"]["weight"],
+                              "sec_litigation": self.sources["sec_litigation"]["weight"]}
+            source_weight = source_weights.get(row["source"], self.sources["tiers"][tier]["weight"])
             recent = recency_weight(age, self.cfg.half_life[row["doc_type"]])
             materiality = self.cfg.category_weights[category]
             evidence = evidence_weight(source_weight, recent, relevance)

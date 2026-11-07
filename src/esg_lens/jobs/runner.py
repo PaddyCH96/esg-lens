@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from esg_lens.collectors.edgar import EdgarCollector
 from esg_lens.collectors.gdelt import GdeltCollector
+from esg_lens.collectors.rss import GoogleNewsCollector, SecLitigationCollector
 from esg_lens.collectors.yfinance_meta import YFinanceMetadataProvider
 from esg_lens.config import get_scoring_config, settings
 from esg_lens.db.engine import get_connection
@@ -18,8 +19,10 @@ from esg_lens.db.repositories import CompanyRepo, DocumentRepo
 from esg_lens.db.scoring import store_score
 
 log = structlog.get_logger(__name__)
-COLLECTORS = {"gdelt": GdeltCollector, "edgar": EdgarCollector}
-DEFAULT_SOURCES = ("gdelt", "edgar", "yfinance")
+COLLECTORS = {"gdelt": GdeltCollector, "edgar": EdgarCollector,
+              "google_rss": GoogleNewsCollector, "sec_litigation": SecLitigationCollector}
+DEFAULT_SOURCES = ("google_rss", "edgar", "yfinance")
+AVAILABLE_SOURCES = (*COLLECTORS, "yfinance")
 
 
 def utcnow():
@@ -138,6 +141,20 @@ async def run_job(pipeline, lock, job_id, tickers, lookback, sources, force_refr
                     await pulse
 
 
+def unique_documents(documents):
+    unique = {}
+    for document in documents:
+        title = " ".join((document["title"] or "").casefold().split())
+        if document["source"] in ("gdelt", "google_rss") and title and document["domain"]:
+            key = (title, document["domain"])
+            if key in unique and document["source"] == "google_rss":
+                continue
+        else:
+            key = document["id"]
+        unique[key] = document
+    return list(unique.values())
+
+
 async def run_item(conn, pipeline, job_id, ticker, lookback, sources, force_refresh):
     with conn:
         conn.execute("UPDATE job_items SET status='running',started_at=? WHERE job_id=? AND ticker=?",
@@ -155,6 +172,7 @@ async def run_item(conn, pipeline, job_id, ticker, lookback, sources, force_refr
             "AND julianday(published_at) BETWEEN julianday(?) AND julianday(?) ORDER BY id",
             (ticker, *sources, start.isoformat(), end.isoformat()),
         ).fetchall()
+        documents = unique_documents(documents)
         if not documents and all(f"{source} failed" in warnings for source in sources):
             raise RuntimeError("All requested sources failed")
         aliases = [row[0] for row in conn.execute("SELECT alias FROM company_aliases WHERE ticker=?", (ticker,))]

@@ -10,7 +10,7 @@ ESG stands for **Environmental, Social, and Governance**. Environmental covers a
 
 ## How it works
 
-ESG Lens collects news headlines from GDELT, filing sections from SEC EDGAR, and company metadata from Yahoo Finance. FinBERT classifies ESG topics and estimates financial sentiment. A separate controversy lexicon captures terms that triggered a penalty.
+ESG Lens collects recent headlines from Google News RSS, filing sections from SEC EDGAR, and company metadata from Yahoo Finance. GDELT and SEC litigation RSS are optional sources. FinBERT classifies ESG topics and estimates financial sentiment. A separate controversy lexicon captures terms that triggered a penalty.
 
 ![Source documents become classified evidence and auditable scores](docs/images/evidence-trail.svg)
 
@@ -53,6 +53,12 @@ curl -s http://127.0.0.1:8000/api/v1/portfolio/analyze \
 2. Open `/api/v1/company/XOM/score` to see the composite, confidence, pillars, and source links.
 3. Use `/api/v1/company/XOM/documents` to inspect evidence and exclusion reasons or `/api/v1/company/XOM/history` to compare runs.
 
+Use `"sources": ["google_rss", "edgar", "yfinance", "sec_litigation"]` to include SEC
+litigation notices. To use GDELT, add `gdelt` explicitly. Google News RSS is best effort and
+can return Google wrapper links. Evidence identifies those links and records the publisher
+when available. The score response includes the earliest and latest stored dates for each
+source. The analysis window can be wider than the evidence the feed actually returned.
+
 Results can be partial when a source fails. The job response shows which tickers were affected. The portfolio average gives equal weight to companies with a score.
 
 ## Tests and validation
@@ -65,7 +71,7 @@ python scripts/sensitivity.py
 
 The worked scoring fixture and API flow tests run with recorded documents or stub inference. They exercise scored and unscored results, duplicate analysis, evidence retrieval, and job recovery. After collecting live scores, the sensitivity command perturbs each category and pillar weight by ±25%, then reports rank stability, the largest score movement, and benchmark rank correlation for up to 50 stored companies. An empty, constant, or insufficient sample has no correlation value.
 
-**Live validation status.** The live GDELT backfill, CPU timing with the downloaded models, and external ESG benchmark remain unverified. The development environment could not resolve GDELT and had no model weights available. No live correlation or rank stability result is available yet.
+**Live validation status.** Live Google News RSS and GDELT collection, CPU timing with the downloaded models, and external ESG benchmark remain unverified. The development environment could not resolve the news hosts and had no model weights available. No live correlation or rank stability result is available yet.
 
 ## Limitations
 

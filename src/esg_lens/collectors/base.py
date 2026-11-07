@@ -44,8 +44,8 @@ class RawDocument:
 
     def __post_init__(self) -> None:
         # Validate CHECK constraints
-        if self.source not in ("gdelt", "edgar", "yfinance", "newsapi"):
-            raise ValueError(f"source must be gdelt|edgar|yfinance|newsapi, got {self.source!r}")
+        if self.source not in ("gdelt", "edgar", "yfinance", "newsapi", "google_rss", "sec_litigation"):
+            raise ValueError(f"Unknown document source {self.source!r}")
         if self.doc_type not in ("news", "filing_section", "press_release"):
             raise ValueError(f"doc_type must be news|filing_section|press_release, got {self.doc_type!r}")
         if self.filing_type is not None and self.filing_type not in ("10-K", "8-K", "DEF 14A"):

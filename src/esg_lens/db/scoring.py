@@ -54,9 +54,12 @@ def store_score(conn, ticker, documents, start, end, cfg, job_id, sources):
         total = sum(signal.w for signal in signals)
         for doc, signal, weighted in group:
 
+            metadata = json.loads(doc["raw_json"] or "{}") if doc["source"] == "google_rss" else {}
             evidence.append({
                 "signal_id": signal["id"], "pillar": pillar, "category": signal["category"],
                 "title": doc["title"], "url": doc["url"], "domain": doc["domain"],
+                "source": doc["source"], "publisher": metadata.get("publisher"),
+                "url_is_wrapper": metadata.get("url_is_wrapper", False),
                 "source_tier": None if doc["source"] == "edgar" else source_tier(doc["domain"], sources),
                 "published_at": doc["published_at"], "sentiment": weighted.sentiment,
                 "controversy_severity": weighted.controversy,
@@ -94,6 +97,12 @@ def store_score(conn, ticker, documents, start, end, cfg, job_id, sources):
     snapshot = {
         "model_version": version, "pillars": pillars, "pillar_weights": weights,
         "sources": counts, "top_contributors": ranked[:20], "signals": evidence,
+        "source_coverage": {
+            source: {
+                "earliest": min(d["published_at"] for d in documents if d["source"] == source),
+                "latest": max(d["published_at"] for d in documents if d["source"] == source),
+            } for source in counts
+        },
         "config": cfg.raw, "sector": company["sector"],
     }
     with conn:
