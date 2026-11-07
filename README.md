@@ -71,7 +71,37 @@ python scripts/sensitivity.py
 
 The worked scoring fixture and API flow tests run with recorded documents or stub inference. They exercise scored and unscored results, duplicate analysis, evidence retrieval, and job recovery. After collecting live scores, the sensitivity command perturbs each category and pillar weight by ±25%, then reports rank stability, the largest score movement, and benchmark rank correlation for up to 50 stored companies. An empty, constant, or insufficient sample has no correlation value.
 
-**Live validation status.** Live Google News RSS and GDELT collection, CPU timing with the downloaded models, and external ESG benchmark remain unverified. The development environment could not resolve the news hosts and had no model weights available. No live correlation or rank stability result is available yet.
+### Live validation results
+
+A clean Linux checkout on November 7, 2026 passed **105 tests** and ran the API with the real
+CPU models. Google News RSS returned evidence for both tickers. Yahoo Finance metadata requests
+failed, so the job reported partial success. The repeat run left the database at 43 raw documents
+and 42 signals.
+
+| Company | Source | Documents used in the analysis | Observed coverage (UTC) | Outcome |
+|---|---|---:|---|---|
+| Apple (AAPL) | Google News RSS | 18 | Aug 28 – Nov 6, 2026 | Scored |
+| Exxon Mobil (XOM) | Google News RSS | 24 | Aug 14 – Nov 4, 2026 | Insufficient evidence to assign a score |
+
+The initial two-company job took **6.0 seconds** after model startup, and the repeat took **3.0
+seconds**. Across the full 17-company sample, 12 companies received a score. Across 58 weight
+perturbations, the lowest rank correlation with the baseline was **0.979** and the largest score
+movement was **3.38 points**. No paired external ESG ratings were available, so external
+correlation is unreported. These are results from one run, with source and publisher coverage
+specific to the query window.
+
+The live SEC litigation feed and EDGAR filings for both companies were checked directly. The hosted
+API run used Google News RSS and Yahoo Finance. To include the SEC collectors in a local rerun, set
+a real SEC contact in `.env` and run the following while the API is up:
+
+```bash
+python -m scripts.live_validation --edgar --benchmark
+```
+
+Google News RSS is intended for personal, non-commercial use. Use SEC sources or another
+appropriately licensed provider for other uses.
+
+[Clean checkout, test output and validation report](https://github.com/PaddyCH96/esg-lens/actions/runs/42381493995).
 
 ## Limitations
 
