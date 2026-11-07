@@ -159,5 +159,21 @@ scoring accuracy. Human annotation and a representative held-out corpus remain r
 Yahoo metadata is reused for 24 hours unless `force_refresh` is requested. A failed refresh is
 reported even when old company metadata exists. Existing metadata remains available. The read-only
 `/api/v1/sources/health` endpoint exposes the latest recorded document-collector attempt per
-company/provider, including timestamps and errors; it is not a live uptime probe and does not yet
-include Yahoo metadata attempts. SEC live validation still requires an operator's real contact.
+company/provider, including timestamps and errors; it is not a live uptime probe. Yahoo metadata attempts are included. SEC live validation still requires an operator's real contact.
+
+## One-command container startup
+
+Run `docker compose up --build`, then open http://localhost:8000. The first build installs CPU
+models and dependencies; initial API startup downloads FinBERT weights. The status badge shows
+when models are ready. Database and model caches persist in named volumes. Set a real USER_AGENT
+contact before enabling SEC sources. The port binds only to localhost.
+
+## Evidence quality and shareable demo
+
+Identical news headlines (ignoring punctuation/case) are counted once across publishers, preferring
+higher-tier sources. This conservative rule does not detect paraphrased syndication. Provider health
+is visible in the dashboard, including failed or cached Yahoo metadata attempts.
+
+The recorded demo landing page is `docs/demo/index.html`; serve that directory using any static
+host. It explicitly dates the recording and does not pretend to run live inference. The working
+video remains available directly from this repository. Public hosting is not configured automatically.

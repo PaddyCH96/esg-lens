@@ -1,0 +1,13 @@
+services:
+  esg-lens:
+    build: .
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      USER_AGENT: ${USER_AGENT:-ESG-Lens/0.1.0 (contact: esg-lens@example.com)}
+    volumes:
+      - esg-data:/data
+      - esg-models:/models
+    restart: unless-stopped
+volumes:
+  esg-data:
+  esg-models:
