@@ -4,13 +4,19 @@ ESG Lens is a local research tool for exploring environmental, social, and gover
 
 ## Working prototype
 
-![ESG Lens dashboard](docs/demo/dashboard.png)
+[![Animated clip of the working ESG Lens prototype — click for full video](docs/demo/preview.gif)](https://github.com/PaddyCH96/esg-lens/blob/main/docs/demo/prototype.webm)
+
+**16-second animated preview · Click above to watch the full recording.**
+
+Recorded November 7, 2026. This clip shows the running prototype, not a mockup.
 
 [Watch the working prototype (WebM)](docs/demo/prototype.webm) · [Recording details](docs/demo/recording.json)
 
 The recording exercises the running FastAPI application with live Google News RSS evidence and real
 CPU inference. It shows portfolio analysis, company scores, missing evidence, source documents,
 methodology, JSON export, and refresh recovery. Source availability and scores change over time.
+
+Latest verified release: **111 Python tests, browser checks, Docker build and container smoke test passed** on [main](https://github.com/PaddyCH96/esg-lens/actions/runs/42389099398).
 
 ## Release features
 
