@@ -2,8 +2,8 @@ name: ESG Lens live validation
 
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/esg-lens-v1-backend]
+  pull_request:
+    types: [opened, synchronize, reopened]
     paths: ['.github/workflows/live-validation.yml']
 
 permissions:
@@ -36,6 +36,7 @@ jobs:
         run: |
           sec=()
           if [[ -n "$SEC_CONTACT" ]]; then
+            echo "::add-mask::$SEC_CONTACT"
             export USER_AGENT="ESG Lens (${SEC_CONTACT})"
             sec+=(--edgar)
           fi
