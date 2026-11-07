@@ -102,6 +102,18 @@ class YFinanceMetadataProvider:
         only when value present, never feed into esg_signals.
         """
         ticker_up = ticker.upper()
+        existing = CompanyRepo(conn).get(ticker_up)
+        if existing and not force_refresh and existing['metadata_json'] and existing['fetched_at']:
+            try:
+                fetched = datetime.fromisoformat(existing['fetched_at'])
+                if fetched.tzinfo is None:
+                    fetched = fetched.replace(tzinfo=timezone.utc)
+                age = (datetime.now(timezone.utc) - fetched).total_seconds()
+                if 0 <= age < 86400:
+                    return {'info': json.loads(existing['metadata_json']), 'sustainability': None,
+                            'external_esg_score': existing['external_esg_score'], 'cached': True}
+            except (ValueError, TypeError):
+                pass
 
         def _sync_fetch():
             try:
@@ -298,3 +310,4 @@ class CompanyMetadata:
     market_cap: Optional[int] = None
     currency: Optional[str] = None
     cik: Optional[str] = None
+

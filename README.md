@@ -147,3 +147,40 @@ screenshots under `docs/demo/`. Live validation is manual in GitHub Actions; the
 synthetic browser checks run on every pull request and main-branch push. Synthetic tests do not
 claim model accuracy. Run one Uvicorn worker, bound to localhost; authentication and public hosting
 are outside this local single-user release.
+
+## Model quality diagnostics and provider reliability
+
+Run `python -m scripts.evaluate_labels` after installing the NLP dependencies. It writes
+`label-evaluation.json` with accuracy, macro F1, per-category precision/recall, a confusion matrix,
+and every misclassification. The 18 examples are authored synthetic, AI-labelled diagnostics;
+they are **not independently human-reviewed ground truth**, and cannot establish real-world
+scoring accuracy. Human annotation and a representative held-out corpus remain required.
+
+Yahoo metadata is reused for 24 hours unless `force_refresh` is requested. A failed refresh is
+reported even when old company metadata exists. Existing metadata remains available. The read-only
+`/api/v1/sources/health` endpoint exposes the latest recorded document-collector attempt per
+company/provider, including timestamps and errors; it is not a live uptime probe. Yahoo metadata attempts are included. SEC live validation still requires an operator's real contact.
+
+## One-command container startup
+
+Run `docker compose up --build`, then open http://localhost:8000. The first build installs CPU
+models and dependencies; initial API startup downloads FinBERT weights. The status badge shows
+when models are ready. Database and model caches persist in named volumes. Set a real USER_AGENT
+contact before enabling SEC sources. The port binds only to localhost.
+
+## Evidence quality and shareable demo
+
+Identical news headlines (ignoring punctuation/case) are counted once across publishers, preferring
+higher-tier sources. This conservative rule does not detect paraphrased syndication. Provider health
+is visible in the dashboard, including failed or cached Yahoo metadata attempts.
+
+The recorded demo landing page is `docs/demo/index.html`; serve that directory using any static
+host. It explicitly dates the recording and does not pretend to run live inference. The working
+video remains available directly from this repository. Public hosting is not configured automatically.
+
+### Observed model diagnostic result
+
+On November 7, 2026, real CPU inference classified all 18 synthetic examples correctly
+(accuracy 1.00, macro F1 1.00). These simple authored examples are a regression diagnostic,
+not a representative held-out human-labelled benchmark. See [full report](docs/label-evaluation.json)
+and [live run](https://github.com/PaddyCH96/esg-lens/actions/runs/42388505935).

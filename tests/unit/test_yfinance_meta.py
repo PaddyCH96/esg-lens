@@ -148,3 +148,20 @@ def test_yfinance_uses_asyncio_to_thread_and_company_aliases_insert():
     # Ensure sustainability isolation — not inserting into esg_signals
     # yfinance file should not reference esg_signals
     assert "esg_signals" not in src or src.count("external_esg_score") >= 1
+
+
+@pytest.mark.asyncio
+async def test_fresh_metadata_cache_skips_network(db_conn):
+    import json
+    from datetime import datetime, timezone
+    from esg_lens.db.repositories import CompanyRepo
+    from esg_lens.collectors.yfinance_meta import YFinanceMetadataProvider
+    CompanyRepo(db_conn).upsert('AAPL','Apple',metadata_json=json.dumps({'shortName':'Apple'}),fetched_at=datetime.now(timezone.utc).isoformat())
+    with patch('esg_lens.collectors.yfinance_meta.yf.Ticker') as ticker:
+        result=await YFinanceMetadataProvider().fetch_yfinance_metadata('AAPL',db_conn)
+        assert result['cached'] is True
+        ticker.assert_not_called()
+        ticker.return_value.info={}
+        ticker.return_value.sustainability=None
+        await YFinanceMetadataProvider().fetch_yfinance_metadata('AAPL',db_conn,force_refresh=True)
+        ticker.assert_called_once()

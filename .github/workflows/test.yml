@@ -27,3 +27,11 @@ jobs:
           DB_PATH="$RUNNER_TEMP/browser.db" uvicorn tests.browser_server:app --host 127.0.0.1 > "$RUNNER_TEMP/browser.log" 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/v1/healthz && break; sleep 1; done
           ESG_RECORDING_MODE=synthetic-test node scripts/record_demo.cjs
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config --quiet
+      - run: docker build -t esg-lens:test .
+      - run: docker run --rm --entrypoint python esg-lens:test -c "from esg_lens.api.main import app; print(app.title)"

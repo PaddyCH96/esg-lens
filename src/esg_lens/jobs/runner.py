@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import structlog
 from structlog.contextvars import bound_contextvars
 from contextlib import closing, suppress
@@ -80,16 +81,21 @@ def stage(conn, job_id, ticker, value):
 async def collect(conn, ticker, since, sources, job_id, force_refresh):
     errors = []
     if "yfinance" in sources:
+        metadata = None
         try:
             metadata = await asyncio.wait_for(
                 YFinanceMetadataProvider().fetch_yfinance_metadata(ticker, conn, force_refresh=force_refresh),
                 timeout=settings.COLLECTOR_TIMEOUT_SECONDS,
             )
-            if metadata is None and not CompanyRepo(conn).get(ticker):
+            if metadata is None:
                 errors.append("yfinance failed")
         except Exception:
             log.exception("metadata_collection_failed", ticker=ticker)
             errors.append("yfinance failed")
+        with conn:
+            conn.execute("INSERT INTO collection_runs(ticker,source,job_id,status,n_fetched,error) VALUES(?,?,?,?,?,?)",
+                         (ticker, "yfinance", job_id, "cached" if metadata and metadata.get("cached") else "ok" if metadata else "failed",
+                          0, None if metadata else "Metadata unavailable; existing values retained"))
     if not CompanyRepo(conn).get(ticker):
         CompanyRepo(conn).upsert(ticker, ticker, fetched_at=utcnow().isoformat())
     for source, factory in COLLECTORS.items():
@@ -142,17 +148,18 @@ async def run_job(pipeline, lock, job_id, tickers, lookback, sources, force_refr
 
 
 def unique_documents(documents):
+    """Collapse identical news headlines across publishers; keep strongest source first."""
+    from esg_lens.nlp.pipeline import source_tier
+    from esg_lens.config import load_yaml
+    sources = load_yaml("sources")
     unique = {}
-    for document in documents:
-        title = " ".join((document["title"] or "").casefold().split())
-        if document["source"] in ("gdelt", "google_rss") and title and document["domain"]:
-            key = (title, document["domain"])
-            if key in unique and document["source"] == "google_rss":
-                continue
-        else:
-            key = document["id"]
-        unique[key] = document
-    return list(unique.values())
+    ordered = sorted(documents, key=lambda d: (source_tier(d["domain"], sources), d["source"] == "google_rss", d["id"]))
+    for document in ordered:
+        title = re.sub(r"[^\w\s]", "", (document["title"] or "").casefold())
+        title = " ".join(title.split())
+        key = ("news", title) if document["source"] in ("gdelt", "google_rss") and title else ("id", document["id"])
+        unique.setdefault(key, document)
+    return sorted(unique.values(), key=lambda d: d["id"])
 
 
 async def run_item(conn, pipeline, job_id, ticker, lookback, sources, force_refresh):
@@ -196,3 +203,4 @@ async def run_item(conn, pipeline, job_id, ticker, lookback, sources, force_refr
                      (status, error, score_id, len(documents), utcnow().isoformat(), job_id, ticker))
         conn.execute("UPDATE jobs SET n_completed=n_completed+?, n_failed=n_failed+? WHERE id=?",
                      (status == "done", status == "failed", job_id))
+

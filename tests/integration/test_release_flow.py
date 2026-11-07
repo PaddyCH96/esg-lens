@@ -146,3 +146,14 @@ def test_dashboard_assets_and_methodology(database):
         assert client.get('/assets/app.js').status_code == 200
         assert client.get('/assets/style.css').status_code == 200
         assert client.get('/api/v1/methodology/notes').status_code == 200
+
+
+def test_provider_health_reports_latest_attempt(database):
+    with closing(get_connection()) as conn:
+        conn.execute("INSERT INTO collection_runs(ticker,source,status) VALUES('AAPL','yfinance','failed')")
+        conn.execute("INSERT INTO collection_runs(ticker,source,status) VALUES('AAPL','yfinance','cached')")
+        conn.commit()
+    with TestClient(create_app(Models())) as client:
+        rows=client.get('/api/v1/sources/health').json()['items']
+        assert len(rows)==1
+        assert rows[0]['status']=='cached'

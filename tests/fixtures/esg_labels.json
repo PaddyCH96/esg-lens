@@ -1,0 +1,74 @@
+[
+  {
+    "text": "The company cut greenhouse gas emissions by replacing coal with renewable electricity.",
+    "label": "Climate Change"
+  },
+  {
+    "text": "The company announced a net zero carbon emissions target.",
+    "label": "Climate Change"
+  },
+  {
+    "text": "The company cleared protected forests, destroying biodiversity and wildlife habitat.",
+    "label": "Natural Capital"
+  },
+  {
+    "text": "The company reduced freshwater withdrawals at its factories.",
+    "label": "Natural Capital"
+  },
+  {
+    "text": "The factory released toxic chemicals into the river.",
+    "label": "Pollution & Waste"
+  },
+  {
+    "text": "The company increased recycling and reduced hazardous waste.",
+    "label": "Pollution & Waste"
+  },
+  {
+    "text": "Workers went on strike over unsafe working conditions and low wages.",
+    "label": "Human Capital"
+  },
+  {
+    "text": "The company expanded employee training and workplace safety programs.",
+    "label": "Human Capital"
+  },
+  {
+    "text": "The company recalled defective products that injured customers.",
+    "label": "Product Liability"
+  },
+  {
+    "text": "The company exposed customer personal data in a security breach.",
+    "label": "Product Liability"
+  },
+  {
+    "text": "The mining company displaced indigenous communities without their consent.",
+    "label": "Community Relations"
+  },
+  {
+    "text": "The company consulted local communities before opening its mine.",
+    "label": "Community Relations"
+  },
+  {
+    "text": "The board appointed independent directors and separated the chair and CEO roles.",
+    "label": "Corporate Governance"
+  },
+  {
+    "text": "Shareholders voted against excessive executive compensation.",
+    "label": "Corporate Governance"
+  },
+  {
+    "text": "The company paid bribes to win government contracts.",
+    "label": "Business Ethics & Values"
+  },
+  {
+    "text": "The company strengthened its anti-corruption and whistleblower policies.",
+    "label": "Business Ethics & Values"
+  },
+  {
+    "text": "The stock rose two percent in afternoon trading.",
+    "label": "Non-ESG"
+  },
+  {
+    "text": "The company reported quarterly revenue and earnings.",
+    "label": "Non-ESG"
+  }
+]

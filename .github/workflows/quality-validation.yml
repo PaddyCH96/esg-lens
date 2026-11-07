@@ -1,0 +1,67 @@
+name: Model and provider validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/esg-validation-reliability]
+    paths-ignore: ['docs/demo/**']
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Configure temporary storage
+        run: |
+          echo "DB_PATH=$RUNNER_TEMP/esg-lens.db" >> "$GITHUB_ENV"
+          echo "CACHE_DIR=$RUNNER_TEMP/esg-cache" >> "$GITHUB_ENV"
+      - name: Install and run offline suite
+        run: |
+          python -m pip install -e '.[dev]'
+          USER_AGENT='ESG Lens offline tests (ci@esg-lens.test)' python -m pytest -q
+      - name: Install CPU models
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
+          python -m pip install -e '.[nlp]'
+          python -m spacy download en_core_web_sm
+      - name: Run live API and benchmark
+        env:
+          SEC_CONTACT: ${{ vars.ESG_SEC_CONTACT }}
+        run: |
+          sec=()
+          if [[ -n "$SEC_CONTACT" ]]; then
+            echo "::add-mask::$SEC_CONTACT"
+            export USER_AGENT="ESG Lens (${SEC_CONTACT})"
+            sec+=(--edgar)
+          fi
+          uvicorn esg_lens.api.main:app --host 127.0.0.1 > validation-server.log 2>&1 &
+          python -m scripts.live_validation --benchmark "${sec[@]}"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Record real working prototype
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/record_demo.cjs
+          rm -rf docs/demo/raw
+      - name: Evaluate labelled diagnostic examples
+        run: python -m scripts.evaluate_labels
+      - name: Upload observed results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-validation
+          path: |
+            validation.json
+            label-evaluation.json
+            docs/demo/
+          if-no-files-found: ignore
+

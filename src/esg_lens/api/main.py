@@ -241,6 +241,13 @@ def create_app(models=model_registry, pipeline_factory=SignalPipeline):
         )
         return {"ticker": latest["ticker"], "limit": limit, "offset": offset, "items": [dict(row) for row in rows]}
 
+    @app.get(PREFIX + "/sources/health")
+    def source_health(conn: DB):
+        rows = conn.execute("SELECT source,ticker,status,n_fetched,error,ran_at FROM collection_runs "
+                            "WHERE id IN (SELECT max(id) FROM collection_runs GROUP BY source,ticker)")
+        return {"scope": "Latest collection attempt per source and company; not an uptime guarantee",
+                "items": [dict(row) for row in rows]}
+
     @app.get(PREFIX + "/methodology")
     def methodology():
         cfg = get_scoring_config()
