@@ -147,3 +147,17 @@ screenshots under `docs/demo/`. Live validation is manual in GitHub Actions; the
 synthetic browser checks run on every pull request and main-branch push. Synthetic tests do not
 claim model accuracy. Run one Uvicorn worker, bound to localhost; authentication and public hosting
 are outside this local single-user release.
+
+## Model quality diagnostics and provider reliability
+
+Run `python -m scripts.evaluate_labels` after installing the NLP dependencies. It writes
+`label-evaluation.json` with accuracy, macro F1, per-category precision/recall, a confusion matrix,
+and every misclassification. The 18 examples are authored synthetic, AI-labelled diagnostics;
+they are **not independently human-reviewed ground truth**, and cannot establish real-world
+scoring accuracy. Human annotation and a representative held-out corpus remain required.
+
+Yahoo metadata is reused for 24 hours unless `force_refresh` is requested. A failed refresh is
+reported even when old company metadata exists. Existing metadata remains available. The read-only
+`/api/v1/sources/health` endpoint exposes the latest recorded document-collector attempt per
+company/provider, including timestamps and errors; it is not a live uptime probe and does not yet
+include Yahoo metadata attempts. SEC live validation still requires an operator's real contact.

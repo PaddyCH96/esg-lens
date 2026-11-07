@@ -85,7 +85,7 @@ async def collect(conn, ticker, since, sources, job_id, force_refresh):
                 YFinanceMetadataProvider().fetch_yfinance_metadata(ticker, conn, force_refresh=force_refresh),
                 timeout=settings.COLLECTOR_TIMEOUT_SECONDS,
             )
-            if metadata is None and not CompanyRepo(conn).get(ticker):
+            if metadata is None:
                 errors.append("yfinance failed")
         except Exception:
             log.exception("metadata_collection_failed", ticker=ticker)
@@ -196,3 +196,4 @@ async def run_item(conn, pipeline, job_id, ticker, lookback, sources, force_refr
                      (status, error, score_id, len(documents), utcnow().isoformat(), job_id, ticker))
         conn.execute("UPDATE jobs SET n_completed=n_completed+?, n_failed=n_failed+? WHERE id=?",
                      (status == "done", status == "failed", job_id))
+
