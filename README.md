@@ -177,3 +177,10 @@ is visible in the dashboard, including failed or cached Yahoo metadata attempts.
 The recorded demo landing page is `docs/demo/index.html`; serve that directory using any static
 host. It explicitly dates the recording and does not pretend to run live inference. The working
 video remains available directly from this repository. Public hosting is not configured automatically.
+
+### Observed model diagnostic result
+
+On November 7, 2026, real CPU inference classified all 18 synthetic examples correctly
+(accuracy 1.00, macro F1 1.00). These simple authored examples are a regression diagnostic,
+not a representative held-out human-labelled benchmark. See [full report](docs/label-evaluation.json)
+and [live run](https://github.com/PaddyCH96/esg-lens/actions/runs/42388505935).
