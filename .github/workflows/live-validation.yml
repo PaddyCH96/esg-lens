@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [codex/esg-lens-v1-backend]
-    paths: ['.github/workflows/live-validation.yml']
 
 permissions:
   contents: read
