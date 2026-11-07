@@ -47,7 +47,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: live-validation
-          path: |
-            validation.json
-            validation-server.log
+          path: validation.json
           if-no-files-found: ignore

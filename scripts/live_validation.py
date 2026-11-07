@@ -84,6 +84,25 @@ def main():
                        for ticker in ("AAPL", "XOM")):
                 raise RuntimeError("AAPL and XOM did not both produce stored live evidence")
     finally:
+        # Keep aggregate evidence readable in the workflow log.
+        summary = dict(result)
+        for name in ("initial", "repeat", "cohort"):
+            if name in result:
+                summary[name] = {**result[name], "scores": {
+                    ticker: {k: v for k, v in score.items() if k != "example_links"}
+                    for ticker, score in result[name]["scores"].items()
+                }}
+        benchmark = summary.get("benchmark")
+        if benchmark:
+            changes = benchmark["sensitivity"]
+            ranks = [row["spearman"] for row in changes if row["spearman"] is not None]
+            summary["benchmark"] = {
+                **{k: v for k, v in benchmark.items() if k != "sensitivity"},
+                "sensitivity_cases": len(changes),
+                "min_rank_correlation": min(ranks, default=None),
+                "max_score_change": max((row["max_score_change"] for row in changes), default=None),
+            }
+        print("LIVE_VALIDATION_SUMMARY " + json.dumps(summary), flush=True)
         args.output.write_text(json.dumps(result, indent=2), encoding="utf-8")
 
 
