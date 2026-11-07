@@ -136,3 +136,13 @@ def test_concurrency_and_stale_recovery(database):
         runner.sweep(conn)
         assert conn.execute("SELECT status,n_failed FROM jobs WHERE id=?", (job,)).fetchone()[:] == ("failed", 1)
         assert runner.enqueue(conn, ["XOM"], False)
+
+
+
+def test_dashboard_assets_and_methodology(database):
+    with TestClient(create_app(Models())) as client:
+        assert client.get('/').status_code == 200
+        assert 'Analyse a portfolio' in client.get('/').text
+        assert client.get('/assets/app.js').status_code == 200
+        assert client.get('/assets/style.css').status_code == 200
+        assert client.get('/api/v1/methodology/notes').status_code == 200

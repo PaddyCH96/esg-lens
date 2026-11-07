@@ -11,7 +11,8 @@ from typing import Annotated
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -250,7 +251,15 @@ def create_app(models=model_registry, pipeline_factory=SignalPipeline):
     def methodology_notes():
         return Path(PROJECT_ROOT, "docs", "scoring_methodology.md").read_text(encoding="utf-8")
 
+    web = Path(__file__).resolve().parents[1] / "web"
+    app.mount("/assets", StaticFiles(directory=web), name="assets")
+
+    @app.get("/", include_in_schema=False)
+    def dashboard():
+        return FileResponse(web / "index.html")
+
     return app
 
 
 app = create_app()
+

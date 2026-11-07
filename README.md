@@ -1,6 +1,24 @@
 # ESG Lens
 
-ESG Lens is a local research tool for exploring environmental, social, and governance signals for US-listed companies. It collects public evidence, classifies it with CPU-based NLP, and exposes scores and their sources through FastAPI.
+ESG Lens is a local research tool for exploring environmental, social, and governance signals for US-listed companies. It collects public evidence, classifies it with CPU-based NLP, and exposes scores and their sources through a browser dashboard and FastAPI.
+
+## Working prototype
+
+![ESG Lens dashboard](docs/demo/dashboard.png)
+
+[Watch the working prototype (WebM)](docs/demo/prototype.webm) · [Recording details](docs/demo/recording.json)
+
+The recording exercises the running FastAPI application with live Google News RSS evidence and real
+CPU inference. It shows portfolio analysis, company scores, missing evidence, source documents,
+methodology, JSON export, and refresh recovery. Source availability and scores change over time.
+
+## Release features
+
+- Browser dashboard with portfolio jobs, progress, refresh recovery and responsive mobile layout.
+- Environmental, social and governance scores, confidence, penalties, evidence coverage and history.
+- Source documents with inclusion/exclusion reasons, safe outbound links and JSON result export.
+- Configurable NLP/scoring, SQLite persistence, source caching, duplicate suppression and partial failures.
+- Automated offline tests, browser checks, live validation, MIT license and reproducible video capture.
 
 ## What is ESG?
 
@@ -39,7 +57,7 @@ Set `CONTACT_EMAIL` and `USER_AGENT` in `.env` with your own contact address bef
 uvicorn esg_lens.api.main:app --host 127.0.0.1
 ```
 
-Open [the interactive API docs](http://127.0.0.1:8000/docs). The app initialises SQLite at startup. Wait for `GET /api/v1/healthz` to return 200 before submitting a job. A persistent 503 means model startup did not finish successfully. Check the server log for details.
+Open [the dashboard](http://127.0.0.1:8000) or [the interactive API docs](http://127.0.0.1:8000/docs). The dashboard defaults to Google News RSS; SEC and other sources can be selected explicitly. The app initialises SQLite at startup. Wait for `GET /api/v1/healthz` to return 200 before submitting a job. A persistent 503 means model startup did not finish successfully. Check the server log for details.
 
 ## Analyse a portfolio
 
@@ -110,4 +128,22 @@ appropriately licensed provider for other uses.
 - The methodology uses configurable judgment-based weights. News, filings, and external ratings can update on different schedules. External scores are shown for comparison only, and providers may use opposite score directions.
 - ESG Lens is a transparent research signal. Its results are not audited ratings or investment advice.
 
-[Methodology](docs/scoring_methodology.md) · [API contract](docs/api_design.md) · [Research notes](docs/research_notes.md) · [MIT license](LICENSE)
+[Release status](docs/release-status.md) · [Methodology](docs/scoring_methodology.md) · [API contract](docs/api_design.md) · [Research notes](docs/research_notes.md) · [MIT license](LICENSE)
+
+
+## Browser checks and recording
+
+With the API running and models ready:
+
+```bash
+npm install --no-save --package-lock=false playwright@1.56.1
+npx playwright install chromium
+node scripts/record_demo.cjs
+```
+
+The script checks portfolio submission, evidence retrieval, company switching, JSON export, missing
+companies, invalid tickers, mobile overflow, and job monitoring after refresh. It records a WebM and
+screenshots under `docs/demo/`. Live validation is manual in GitHub Actions; the offline suite and
+synthetic browser checks run on every pull request and main-branch push. Synthetic tests do not
+claim model accuracy. Run one Uvicorn worker, bound to localhost; authentication and public hosting
+are outside this local single-user release.

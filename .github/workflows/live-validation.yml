@@ -4,9 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: [codex/esg-lens-v1-backend]
+    paths-ignore: ['docs/demo/**']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
@@ -42,10 +43,30 @@ jobs:
           fi
           uvicorn esg_lens.api.main:app --host 127.0.0.1 > validation-server.log 2>&1 &
           python -m scripts.live_validation --benchmark "${sec[@]}"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Record real working prototype
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/record_demo.cjs
+          rm -rf docs/demo/raw
+      - name: Publish recording to release branch
+        if: github.ref == 'refs/heads/codex/esg-lens-v1-backend'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/demo
+          git diff --cached --quiet || git commit -m "docs: record verified live ESG prototype"
+          git push origin HEAD:codex/esg-lens-v1-backend
       - name: Upload observed results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: live-validation
-          path: validation.json
+          path: |
+            validation.json
+            docs/demo/
           if-no-files-found: ignore
+
