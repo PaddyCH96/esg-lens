@@ -15,7 +15,7 @@ async def collect(conn, ticker, since, sources, job_id, force_refresh):
     for i in range(5 if ticker == 'AAPL' else 1):
         conn.execute('''INSERT OR IGNORE INTO raw_documents
             (ticker,source,doc_type,title,url,domain,published_at,content_hash) VALUES(?,?,?,?,?,?,?,?)''',
-            (ticker, 'google_rss', 'headline', f'{ticker} pollution fine fixture {i}',
+            (ticker, 'google_rss', 'news', f'{ticker} pollution fine fixture {i}',
              'https://example.org/evidence', 'reuters.com',
              (runner.utcnow()-timedelta(days=1)).isoformat(), str(i)))
     conn.commit()
