@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS raw_documents (
     ticker         TEXT NOT NULL REFERENCES companies(ticker) ON DELETE CASCADE,
     -- Keep in sync with the API `sources` enum in api_design.md §1. Add 'rss' only
     -- alongside an actual RSS collector; research_notes.md §2.4 lists it as unevaluated.
-    source         TEXT NOT NULL CHECK (source IN ('gdelt','edgar','yfinance','newsapi')),
+    source         TEXT NOT NULL CHECK (source IN ('gdelt','edgar','yfinance','newsapi','google_rss','sec_litigation')),
     doc_type       TEXT NOT NULL CHECK (doc_type IN ('news','filing_section','press_release')),
     external_id    TEXT,                               -- GDELT doc id / EDGAR accession no.
     url            TEXT,
@@ -270,3 +270,19 @@ with no model inference — which makes the sensitivity script fast and the "exp
 **SQLite caveats to respect:** no native `BOOLEAN`/`DATETIME`; `CHECK` constraints allowing `NULL`
 must list `NULL` explicitly as shown; enable `PRAGMA foreign_keys = ON` on **every connection**
 (it is off by default per-connection); use WAL for concurrent reads during a running job.
+
+## Score snapshots
+
+The schema creates `score_snapshots` on startup for existing databases as well as new ones:
+
+```sql
+CREATE TABLE IF NOT EXISTS score_snapshots (
+    score_id INTEGER PRIMARY KEY REFERENCES esg_scores(id) ON DELETE CASCADE,
+    payload TEXT NOT NULL
+);
+```
+
+The JSON payload stores the resolved scoring configuration, model version, pillar results and
+weights, source counts, and the per-signal evidence and weights used for that score. It is written
+in the same transaction as the score and its contributions. Historic scores without a snapshot
+remain readable but have limited evidence detail.

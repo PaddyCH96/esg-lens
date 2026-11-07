@@ -53,3 +53,7 @@ rate_limits:
 
 # Cache TTL in hours
 cache_ttl_hours: 24
+
+# SEC enforcement releases are agency records, distinct from issuer filings.
+sec_litigation:
+  weight: 1.0

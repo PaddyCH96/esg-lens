@@ -1,43 +1,38 @@
-import torch
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
-import logging
-from typing import Optional, Any
-from src.esg_lens.config import settings
+"""Load the CPU inference models once per process."""
 
-logger = logging.getLogger(__name__)
+from functools import cached_property
+
+from esg_lens.config import settings
+
+ESG_MODEL = "yiyanghkust/finbert-esg-9-categories"
+SENTIMENT_MODEL = "ProsusAI/finbert"
+
 
 class ModelRegistry:
-    """
-    Process-wide singleton registry for NLP models.
-    Ensures models are loaded once and shared across all requests.
-    """
-    def __init__(self):
-        self._models = {}
-        self._tokenizers = {}
-        self.device = -1 if not torch.cuda.is_available() else 0
+    @cached_property
+    def language(self):
+        import spacy
+
+        return spacy.load("en_core_web_sm")
+
+    @cached_property
+    def classifier(self):
+        return self._pipeline(ESG_MODEL)
+
+    @cached_property
+    def sentiment(self):
+        return self._pipeline(SENTIMENT_MODEL)
+
+    @staticmethod
+    def _pipeline(name):
+        import torch
+        from transformers import pipeline
+
         torch.set_num_threads(settings.TORCH_THREADS)
+        return pipeline("text-classification", model=name, device=-1)
 
-    def get_pipeline(self, task: str, model_name: str) -> Any:
-        key = f"{task}_{model_name}"
-        if key not in self._models:
-            logger.info(f"Loading model {model_name} for task {task} on device {self.device}...")
-            self._models[key] = pipeline(
-                task, 
-                model=model_name, 
-                tokenizer=model_name, 
-                device=self.device,
-                batch_size=16
-            )
-        return self._models[key]
+    def warm(self):
+        _ = self.language, self.classifier, self.sentiment
 
-    def get_tokenizer(self, model_name: str) -> Any:
-        if model_name not in self._tokenizers:
-            self._tokenizers[model_name] = AutoTokenizer.from_pretrained(model_name)
-        return self._tokenizers[model_name]
 
-    def clear(self):
-        self._models.clear()
-        self._tokenizers.clear()
-
-# Singleton instance
 model_registry = ModelRegistry()

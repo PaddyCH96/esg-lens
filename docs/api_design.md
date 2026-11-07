@@ -47,7 +47,7 @@ Queues an analysis. Returns immediately — **never blocks on NLP**.
   "tickers": ["AAPL", "XOM", "JPM"],
   "force_refresh": false,
   "lookback_days": 365,
-  "sources": ["gdelt", "edgar", "yfinance"]
+  "sources": ["google_rss", "edgar", "yfinance"]
 }
 ```
 
@@ -56,7 +56,7 @@ Queues an analysis. Returns immediately — **never blocks on NLP**.
 | `tickers` | `string[]` | ✅ | — | 1–25 items, deduped, uppercased |
 | `force_refresh` | `bool` | ✗ | `false` | Bypass the HTTP cache and re-collect |
 | `lookback_days` | `int` | ✗ | `365` | 30–730 |
-| `sources` | `string[]` | ✗ | all enabled | Subset of `gdelt`, `edgar`, `yfinance`, `newsapi`. Must match the `raw_documents.source` CHECK exactly — adding a collector means updating both. |
+| `sources` | `string[]` | ✗ | Google RSS, EDGAR, Yahoo Finance | Also accepts `gdelt` and `sec_litigation` as explicit options. NewsAPI is disabled for v1. |
 
 **`202 Accepted`**
 ```json
@@ -200,12 +200,16 @@ Returns the **latest stored** score. Read-only — it never triggers collection 
   "methodology": {
     "version": "1.0.0",
     "config_hash": "sha256:9a1f...",
-    "docs_url": "/docs/scoring_methodology.md"
+    "docs_url": "/api/v1/methodology"
   },
   "computed_at": "2026-09-02T14:03:58Z",
   "is_stale": false
 }
 ```
+
+`evidence.source_coverage` reports the earliest and latest observed publication date
+per source. Google RSS contributions include the publisher when available and a
+`url_is_wrapper` flag for Google-hosted links.
 
 **`200` with `status: "insufficient_data"`** — `composite` is `null`, pillars present but null,
 and `evidence` still returned so the caller can see *why*. This is a success, not an error.
@@ -221,7 +225,7 @@ and `evidence` still returned so the caller can see *why*. This is a success, no
 | `GET /api/v1/healthz` | `{"status":"ok","db":"ok","models_loaded":true,"version":"1.0.0"}`; `503` while models load |
 | `GET /api/v1/company/{ticker}/history?limit=30` | Score time series — free from the append-only table |
 | `GET /api/v1/company/{ticker}/documents?pillar=E&included=true&limit=50` | Paginated raw evidence. **`pillar` and `included` are columns on `esg_signals`, not `raw_documents`** — the endpoint joins `raw_documents → esg_signals` and filters on the signal row whose `model_version` matches the one behind the ticker's latest `esg_scores` row. Documents with no signal row at that version are returned only when no filter is supplied. |
-| `GET /api/v1/methodology` | Serves the resolved weights + version — makes transparency machine-readable |
+| `GET /api/v1/methodology` | Serves the resolved weights, version and config hash. `/methodology/notes` serves the written methodology. |
 | `DELETE /api/v1/portfolio/{job_id}` | **Deferred past v1.** Cancellation needs checkpoint semantics the job runner does not define (`architecture.md` §5.4 exposes only `enqueue`/`get`/`update`). The `cancelled` value stays in the `jobs.status` CHECK so adding it later needs no migration. Do not implement in Phase 4. |
 
 ---

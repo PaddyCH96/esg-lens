@@ -45,7 +45,7 @@ def test_schema_diff_against_data_model():
 
     schema = (Path(__file__).resolve().parents[2] / "src" / "esg_lens" / "db" / "schema.sql").read_text()
     # Minimal check: all load-bearing CHECKs are present
-    assert "CHECK (source IN ('gdelt','edgar','yfinance','newsapi'))" in schema
+    assert "CHECK (source IN ('gdelt','edgar','yfinance','newsapi','google_rss','sec_litigation'))" in schema
     assert "CHECK (status IN ('ok','insufficient_data','failed'))" in schema
     assert "CHECK (status IN ('queued','running','done','partial','failed','cancelled'))" in schema
     assert "ON DELETE SET NULL" in schema

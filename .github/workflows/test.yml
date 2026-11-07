@@ -1,0 +1,29 @@
+name: Tests and browser checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline suite
+        run: |
+          python -m pip install -e '.[dev]'
+          USER_AGENT='ESG Lens offline tests (ci@esg-lens.test)' python -m pytest -q
+      - name: Browser checks with synthetic evidence
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          DB_PATH="$RUNNER_TEMP/browser.db" uvicorn tests.browser_server:app --host 127.0.0.1 > "$RUNNER_TEMP/browser.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/v1/healthz && break; sleep 1; done
+          ESG_RECORDING_MODE=synthetic-test node scripts/record_demo.cjs

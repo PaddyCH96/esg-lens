@@ -59,6 +59,7 @@ pillar_weights:
 # Positive sentiment is scaled by 0.6 — a 40% damping — because favourable
 # coverage is frequently company-sourced PR. Controversy overrides sentiment.
 sentiment_damping: 0.6
+controversy_severity_weight: 0.3
 controversy_sentiment_weight: 0.3
 
 # ── Confidence formula weights (§6.3) ──────────────────────────────────
