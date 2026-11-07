@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 310" role="img" aria-labelledby="title description">
+  <title id="title">What is ESG?</title>
+  <desc id="description">Environmental covers climate and pollution, Social covers people and communities, and Governance covers oversight and business conduct.</desc>
+  <rect width="900" height="310" rx="22" fill="#101b24"/>
+  <g font-family="system-ui, sans-serif">
+    <text x="34" y="52" fill="#ffffff" font-size="33" font-weight="700">What is ESG?</text>
+    <text x="34" y="82" fill="#b9cbd7" font-size="17">Three perspectives on a company’s practices and risks</text>
+    <g transform="translate(34 109)">
+      <rect width="264" height="169" rx="14" fill="#18332e"/>
+      <text x="20" y="49" fill="#7be1b5" font-size="35" font-weight="750">E</text>
+      <text x="20" y="86" fill="#ffffff" font-size="23" font-weight="650">Environmental</text>
+      <text x="20" y="119" fill="#d0e8de" font-size="16">Climate and emissions</text>
+      <text x="20" y="144" fill="#d0e8de" font-size="16">Pollution and resource use</text>
+    </g>
+    <g transform="translate(318 109)">
+      <rect width="264" height="169" rx="14" fill="#1c3246"/>
+      <text x="20" y="49" fill="#8fd1ff" font-size="35" font-weight="750">S</text>
+      <text x="20" y="86" fill="#ffffff" font-size="23" font-weight="650">Social</text>
+      <text x="20" y="119" fill="#d6e8f8" font-size="16">Worker safety and labor</text>
+      <text x="20" y="144" fill="#d6e8f8" font-size="16">Customers and communities</text>
+    </g>
+    <g transform="translate(602 109)">
+      <rect width="264" height="169" rx="14" fill="#382f43"/>
+      <text x="20" y="49" fill="#e1b5ff" font-size="35" font-weight="750">G</text>
+      <text x="20" y="86" fill="#ffffff" font-size="23" font-weight="650">Governance</text>
+      <text x="20" y="119" fill="#e9dced" font-size="16">Board oversight and pay</text>
+      <text x="20" y="144" fill="#e9dced" font-size="16">Ethics and accountability</text>
+    </g>
+  </g>
+</svg>

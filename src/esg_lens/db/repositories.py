@@ -12,8 +12,9 @@ class CompanyRepo:
         self.conn = conn
 
     def upsert(self, ticker: str, name: str, **fields: Any) -> None:
-        cols = ["ticker", "name", "fetched_at"] + list(fields.keys())
-        vals = [ticker.upper(), name, fields.get("fetched_at", "")] + list(fields.values())
+        fields.setdefault("fetched_at", "")
+        cols = ["ticker", "name", *fields]
+        vals = [ticker.upper(), name, *fields.values()]
         placeholders = ",".join("?" for _ in cols)
         # SQLite UPSERT
         set_clause = ",".join(f"{c}=excluded.{c}" for c in cols if c != "ticker")

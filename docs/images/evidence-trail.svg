@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 190" role="img" aria-labelledby="title description">
+  <title id="title">How ESG Lens builds a score</title>
+  <desc id="description">News and filings become classified evidence. Weighted evidence produces pillar and composite scores, with a link back to each source.</desc>
+  <rect width="900" height="190" rx="22" fill="#101b24"/>
+  <g font-family="system-ui, sans-serif" text-anchor="middle">
+    <text x="450" y="45" fill="#fff" font-size="26" font-weight="700">How ESG Lens builds a score</text>
+    <g fill="#213543">
+      <rect x="25" y="69" width="250" height="94" rx="12"/>
+      <rect x="325" y="69" width="250" height="94" rx="12"/>
+      <rect x="625" y="69" width="250" height="94" rx="12"/>
+    </g>
+    <g fill="#fff" font-size="19" font-weight="650">
+      <text x="150" y="108">Source documents</text>
+      <text x="450" y="108">Classified evidence</text>
+      <text x="750" y="108">Auditable scores</text>
+    </g>
+    <g fill="#c9dce7" font-size="14">
+      <text x="150" y="136">News headlines and filings</text>
+      <text x="450" y="136">Topic, sentiment, controversy</text>
+      <text x="750" y="136">E/S/G, confidence, source links</text>
+    </g>
+    <path d="M286 116h27m-7-7 7 7-7 7m280-7h27m-7-7 7 7-7 7" fill="none" stroke="#7be1b5" stroke-width="2.5"/>
+  </g>
+</svg>

@@ -222,3 +222,9 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     version    INTEGER PRIMARY KEY,
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Immutable evidence and configuration used for each newly computed score.
+CREATE TABLE IF NOT EXISTS score_snapshots (
+    score_id INTEGER PRIMARY KEY REFERENCES esg_scores(id) ON DELETE CASCADE,
+    payload TEXT NOT NULL
+);
